@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.db import connection
-from django.db.models import Count, Max, Q, Sum
+from django.db.models import Count, Q
 from django.db.utils import OperationalError, ProgrammingError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -99,6 +99,60 @@ def _veterinarios_activos(sucursal=None):
     if sucursal is not None:
         queryset = queryset.filter(sucursal=sucursal)
     return queryset.order_by("first_name", "last_name", "username")
+
+
+def _inventario_por_sucursal(sucursal):
+    if sucursal is None:
+        return {
+            "farmacos": [],
+            "resumen": {
+                "total_items": 0,
+                "total_stock": 0,
+                "ultima_actualizacion": None,
+                "categorias": [],
+                "criticos": [],
+            },
+        }
+
+    inventario_qs = (
+        Farmaco.objects.filter(sucursal=sucursal)
+        .order_by("categoria", "nombre")
+        .select_related("sucursal")
+    )
+    farmacos = list(inventario_qs)
+
+    ultima_actualizacion = None
+    if farmacos:
+        ultima_actualizacion = max(
+            (farmaco.actualizado for farmaco in farmacos), default=None
+        )
+
+    categorias = []
+    for valor, etiqueta in Farmaco.Categoria.choices:
+        elementos = [farmaco for farmaco in farmacos if farmaco.categoria == valor]
+        if elementos:
+            categorias.append(
+                {
+                    "codigo": valor,
+                    "nombre": etiqueta,
+                    "total_items": len(elementos),
+                    "total_stock": sum(farmaco.stock for farmaco in elementos),
+                    "items": elementos,
+                }
+            )
+
+    criticos = [farmaco for farmaco in farmacos if farmaco.stock <= 5]
+
+    return {
+        "farmacos": farmacos,
+        "resumen": {
+            "total_items": len(farmacos),
+            "total_stock": sum(farmaco.stock for farmaco in farmacos),
+            "ultima_actualizacion": ultima_actualizacion,
+            "categorias": categorias,
+            "criticos": criticos,
+        },
+    }
 
 
 # ----------------------------
@@ -339,6 +393,11 @@ def dashboard(request):
             veterinario=user
         ).order_by("-fecha")
         context["mi_sucursal"] = mi_sucursal
+        if mi_sucursal is not None:
+            inventario = _inventario_por_sucursal(mi_sucursal)
+            context["inventario_veterinario"] = inventario["resumen"]
+        else:
+            context["inventario_veterinario"] = None
     elif user.rol == "OWNER":
         productos_disponibles = _producto_table_available()
         propietario = (
@@ -2115,13 +2174,12 @@ def inventario_farmacos_admin(request):
         sucursal_seleccionada = farmaco_en_edicion.sucursal
 
     if sucursal_seleccionada:
-        farmacos = (
-            Farmaco.objects.select_related("sucursal")
-            .filter(sucursal=sucursal_seleccionada)
-            .order_by("categoria", "nombre")
-        )
+        inventario = _inventario_por_sucursal(sucursal_seleccionada)
+        farmacos = inventario["farmacos"]
+        resumen_inventario = inventario["resumen"]
     else:
-        farmacos = Farmaco.objects.none()
+        farmacos = []
+        resumen_inventario = None
 
     contexto = {
         "sucursales": sucursales_para_formulario,
@@ -2130,6 +2188,7 @@ def inventario_farmacos_admin(request):
         "crear_form": crear_form,
         "farmaco_en_edicion": farmaco_en_edicion,
         "editar_form": editar_form,
+        "resumen_inventario": resumen_inventario,
     }
 
     return render(request, "core/inventario_farmacos_admin.html", contexto)
@@ -2318,41 +2377,27 @@ def inventario_farmacos_veterinario(request):
         contexto = {
             "sucursal": None,
             "inventario": [],
-            "totales": {"items": 0, "stock": 0, "ultima_actualizacion": None},
+            "totales": {
+                "total_items": 0,
+                "total_stock": 0,
+                "ultima_actualizacion": None,
+            },
+            "criticos": [],
         }
         return render(request, "core/inventario_farmacos_vet.html", contexto)
 
-    inventario_qs = (
-        Farmaco.objects.filter(sucursal=sucursal)
-        .order_by("categoria", "nombre")
-        .select_related("sucursal")
-    )
-    farmacos = list(inventario_qs)
-    agregados = inventario_qs.aggregate(
-        total_stock=Sum("stock"),
-        ultima_actualizacion=Max("actualizado"),
-    )
-
-    inventario_por_categoria = []
-    for valor, etiqueta in Farmaco.Categoria.choices:
-        elementos = [f for f in farmacos if f.categoria == valor]
-        if elementos:
-            inventario_por_categoria.append(
-                {
-                    "codigo": valor,
-                    "nombre": etiqueta,
-                    "items": elementos,
-                }
-            )
+    inventario = _inventario_por_sucursal(sucursal)
+    resumen = inventario["resumen"]
 
     contexto = {
         "sucursal": sucursal,
-        "inventario": inventario_por_categoria,
+        "inventario": resumen["categorias"],
         "totales": {
-            "items": len(farmacos),
-            "stock": agregados.get("total_stock") or 0,
-            "ultima_actualizacion": agregados.get("ultima_actualizacion"),
+            "total_items": resumen["total_items"],
+            "total_stock": resumen["total_stock"],
+            "ultima_actualizacion": resumen["ultima_actualizacion"],
         },
+        "criticos": resumen["criticos"],
     }
 
     return render(request, "core/inventario_farmacos_vet.html", contexto)

@@ -493,6 +493,97 @@
                         </div>
                     </div>
                 </div>
+
+                {% if inventario_veterinario %}
+                    <div class="mt-10 space-y-6">
+                        <div class="bg-white rounded-2xl shadow-sm p-6 border border-sky-100">
+                            <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-900">Inventario farmacológico</h3>
+                                    <p class="text-sm text-gray-500">Resumen operativo de la farmacia interna de {{ mi_sucursal.nombre }}.</p>
+                                </div>
+                                <div class="flex flex-wrap gap-3">
+                                    <a href="{% url 'inventario_farmacos_veterinario' %}" class="inline-flex items-center gap-2 rounded-lg border border-sky-200 px-4 py-2 text-sm font-semibold text-sky-700 hover:bg-sky-50">
+                                        <i class="fas fa-prescription-bottle-medical"></i>
+                                        Ver detalle completo
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                                <div class="rounded-2xl border border-emerald-100 bg-emerald-50 p-5 text-sm text-emerald-800">
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-emerald-600">Referencias activas</p>
+                                    <p class="mt-2 text-2xl font-bold">{{ inventario_veterinario.total_items }}</p>
+                                    <p class="text-xs mt-1">Medicamentos listados en esta sede.</p>
+                                </div>
+                                <div class="rounded-2xl border border-sky-100 bg-sky-50 p-5 text-sm text-sky-800">
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-sky-600">Stock disponible</p>
+                                    <p class="mt-2 text-2xl font-bold">{{ inventario_veterinario.total_stock }}</p>
+                                    <p class="text-xs mt-1">Unidades totales en existencia.</p>
+                                </div>
+                                <div class="rounded-2xl border border-gray-200 bg-gray-50 p-5 text-sm text-gray-700">
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Última actualización</p>
+                                    {% if inventario_veterinario.ultima_actualizacion %}
+                                        <p class="mt-2 text-base font-semibold text-gray-900">{{ inventario_veterinario.ultima_actualizacion|date:"d/m/Y H:i" }}</p>
+                                        <p class="text-xs mt-1">Sincronizado por administración.</p>
+                                    {% else %}
+                                        <p class="mt-2 text-base font-semibold text-gray-900">Sin movimientos</p>
+                                        <p class="text-xs mt-1">Aún no se registran ingresos.</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% if inventario_veterinario.criticos %}
+                                <div class="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+                                    <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                                        <div>
+                                            <p class="text-sm font-semibold text-amber-800">Alertas de reposición</p>
+                                            <p class="text-xs text-amber-700">Prioriza el pedido de estos medicamentos para evitar quiebres.</p>
+                                        </div>
+                                        <span class="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-amber-700 ring-1 ring-amber-200">
+                                            <i class="fas fa-exclamation-triangle"></i>
+                                            {{ inventario_veterinario.criticos|length }} en vigilancia
+                                        </span>
+                                    </div>
+                                    <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                        {% for farmaco in inventario_veterinario.criticos|slice:':6' %}
+                                            <article class="rounded-xl border border-amber-200 bg-white/95 p-4 text-xs text-amber-800">
+                                                <h4 class="font-semibold text-amber-900">{{ farmaco.nombre }}</h4>
+                                                <p class="mt-1">{{ farmaco.get_categoria_display }}</p>
+                                                <p class="mt-2 inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 font-semibold">
+                                                    <i class="fas fa-layer-group"></i>{{ farmaco.stock }} unidades
+                                                </p>
+                                            </article>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% endif %}
+                            {% if inventario_veterinario.categorias %}
+                                <div class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+                                    {% for categoria in inventario_veterinario.categorias|slice:':4' %}
+                                        <article class="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                                            <div class="flex items-center justify-between">
+                                                <h4 class="text-sm font-semibold text-gray-900">{{ categoria.nombre }}</h4>
+                                                <span class="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-gray-600 ring-1 ring-gray-200">
+                                                    <i class="fas fa-vial"></i>{{ categoria.total_items }}
+                                                </span>
+                                            </div>
+                                            <p class="mt-2 text-xs text-gray-600">{{ categoria.total_stock }} unidades en stock</p>
+                                            <ul class="mt-3 space-y-2 text-xs text-gray-600">
+                                                {% for farmaco in categoria.items|slice:':3' %}
+                                                    <li class="flex items-center justify-between gap-2">
+                                                        <span>{{ farmaco.nombre }}</span>
+                                                        <span class="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 font-semibold text-sky-700">
+                                                            <i class="fas fa-layer-group"></i>{{ farmaco.stock }}
+                                                        </span>
+                                                    </li>
+                                                {% endfor %}
+                                            </ul>
+                                        </article>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endif %}
             </div>
 
         {% elif request.user.rol == "OWNER" %}
