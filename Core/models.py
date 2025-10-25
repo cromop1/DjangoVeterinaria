@@ -113,6 +113,12 @@ class Cita(models.Model):
     tipo = models.CharField(max_length=50, choices=TIPOS, default="consulta")
     estado = models.CharField(max_length=20, choices=ESTADOS, default="pendiente")
     notas = models.TextField(blank=True)
+    farmacos_utilizados = models.ManyToManyField(
+        "Farmaco",
+        blank=True,
+        related_name="citas_utilizadas",
+        help_text="Medicamentos del inventario utilizados durante la atención.",
+    )
 
     def __str__(self):
         veterinario_nombre = (

@@ -65,6 +65,48 @@
                             </div>
                         </div>
 
+                        <div class="border rounded-4 p-4 mt-4 bg-white shadow-sm">
+                            <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+                                <div>
+                                    <h3 class="h6 mb-1 text-dark">Registro farmacológico</h3>
+                                    <p class="text-muted small mb-0">
+                                        Indicá si se utilizaron medicamentos del inventario de {{ cita.sucursal.nombre }} durante la atención.
+                                    </p>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="utilizo_farmacos" name="utilizo_farmacos" {% if utilizo_farmacos %}checked{% endif %}>
+                                    <label class="form-check-label fw-semibold" for="utilizo_farmacos">Se utilizaron fármacos del inventario</label>
+                                </div>
+                            </div>
+
+                            <div id="seleccion-farmacos" class="mt-4 {% if not utilizo_farmacos %}d-none{% endif %}">
+                                {% if farmacos_catalogo %}
+                                <label for="farmacos_utilizados" class="form-label fw-semibold text-muted text-uppercase small">Seleccioná los medicamentos utilizados</label>
+                                <select id="farmacos_utilizados" name="farmacos_utilizados" class="form-select" multiple size="8">
+                                    {% for categoria in farmacos_catalogo %}
+                                    <optgroup label="{{ categoria.nombre }}">
+                                        {% for farmaco in categoria.items %}
+                                        <option value="{{ farmaco.id }}" {% if farmaco.id in farmacos_seleccionados %}selected{% endif %}>
+                                            {{ farmaco.nombre }} — Stock: {{ farmaco.stock }}
+                                        </option>
+                                        {% endfor %}
+                                    </optgroup>
+                                    {% endfor %}
+                                </select>
+                                <p class="text-muted small mt-2 mb-0">
+                                    Mantené presionada la tecla Ctrl (o Cmd en Mac) para seleccionar múltiples opciones.
+                                </p>
+                                {% else %}
+                                <div class="alert alert-warning d-flex align-items-center gap-3 mb-0 rounded-3" role="alert">
+                                    <i class="bi bi-exclamation-triangle-fill text-warning fs-4"></i>
+                                    <div>
+                                        Aún no hay fármacos registrados para esta sucursal. Contactá al equipo administrativo para mantener actualizado el inventario.
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
                         <div class="border rounded-4 p-4 mt-4 bg-light">
                             <div class="form-check form-switch mb-3">
                                 <input class="form-check-input" type="checkbox" role="switch" id="sin_proximo_control" name="sin_proximo_control" {% if historial_existente.sin_proximo_control %}checked{% endif %}>
@@ -119,6 +161,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const adjuntarCheckbox = document.getElementById('adjuntar_estudios');
     const wrapperEstudio = document.getElementById('wrapper-estudio');
     const inputEstudio = document.getElementById('estudio_imagen');
+    const utilizoFarmacos = document.getElementById('utilizo_farmacos');
+    const seleccionFarmacos = document.getElementById('seleccion-farmacos');
 
     function toggleProximoControl() {
         if (!sinProximoControl || !proximoControlInput) return;
@@ -138,11 +182,19 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    function toggleFarmacos() {
+        if (!seleccionFarmacos) return;
+        const mostrar = utilizoFarmacos && utilizoFarmacos.checked;
+        seleccionFarmacos.classList.toggle('d-none', !mostrar);
+    }
+
     sinProximoControl && sinProximoControl.addEventListener('change', toggleProximoControl);
     adjuntarCheckbox && adjuntarCheckbox.addEventListener('change', toggleAdjunto);
+    utilizoFarmacos && utilizoFarmacos.addEventListener('change', toggleFarmacos);
 
     toggleProximoControl();
     toggleAdjunto();
+    toggleFarmacos();
 });
 </script>
 {% endblock %}

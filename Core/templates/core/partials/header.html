@@ -122,6 +122,10 @@
                            class="rounded-full px-4 py-2 text-sm font-semibold transition-colors {% if current == 'historial_medico_vet' or current == 'detalle_historial' %}bg-white text-cyan-900 shadow{% else %}text-white/85 hover:bg-white/10{% endif %}">
                             <i class="fas fa-file-medical mr-2"></i>Historiales
                         </a>
+                        <a href="{% url 'inventario_farmacos_veterinario' %}"
+                           class="rounded-full px-4 py-2 text-sm font-semibold transition-colors {% if current == 'inventario_farmacos_veterinario' %}bg-white text-cyan-900 shadow{% else %}text-white/85 hover:bg-white/10{% endif %}">
+                            <i class="fas fa-prescription-bottle-medical mr-2"></i>Inventario fármacos
+                        </a>
                         <a href="{% url 'dashboard_veterinarios' %}"
                            class="rounded-full px-4 py-2 text-sm font-semibold transition-colors {% if current == 'dashboard_veterinarios' or current == 'dashboard_veterinarios_indicadores' %}bg-white text-cyan-900 shadow{% else %}text-white/85 hover:bg-white/10{% endif %}">
                             <i class="fas fa-chart-pie mr-2"></i>Indicadores

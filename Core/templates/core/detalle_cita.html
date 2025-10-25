@@ -36,6 +36,39 @@
         </div>
     </div>
 
+    {% with farmacos=cita.farmacos_utilizados.all %}
+    {% if farmacos %}
+    <div class="card mb-4 shadow-sm rounded-4 border-0" style="border-left: 6px solid #0ea5e9;">
+        <div class="card-header bg-gradient fw-bold d-flex align-items-center">
+            <i class="bi bi-prescription2 me-2 text-dark fs-4"></i>
+            <span class="text-dark fs-5">Fármacos administrados</span>
+        </div>
+        <div class="card-body">
+            <p class="text-muted small mb-4">
+                Registro de medicamentos suministrados desde el inventario de {{ cita.sucursal.nombre }} durante la atención.
+            </p>
+            <div class="row g-3">
+                {% for farmaco in farmacos %}
+                <div class="col-md-6">
+                    <div class="border rounded-4 p-3 h-100 bg-light">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h6 class="mb-0 text-dark">{{ farmaco.nombre }}</h6>
+                            <span class="badge bg-primary-subtle text-primary">{{ farmaco.get_categoria_display }}</span>
+                        </div>
+                        <p class="text-muted small mb-2">{{ farmaco.descripcion|truncatewords:30 }}</p>
+                        <div class="d-flex flex-wrap gap-3 text-muted small">
+                            <span class="d-inline-flex align-items-center gap-1"><i class="bi bi-building me-1"></i>{{ farmaco.sucursal.nombre }}</span>
+                            <span class="d-inline-flex align-items-center gap-1"><i class="bi bi-box-seam me-1"></i>Stock actual: {{ farmaco.stock }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% endwith %}
+
     <!-- Informe Médico -->
     {% if historial %}
     <div class="card shadow-sm rounded-4 mb-4 border-0" style="border-left: 6px solid #34ace0;">

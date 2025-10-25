@@ -941,11 +941,14 @@ def mis_citas(request):
     filtro_desde = request.GET.get("desde", "").strip()
     filtro_hasta = request.GET.get("hasta", "").strip()
 
-    base_queryset = Cita.objects.select_related(
-        "paciente",
-        "paciente__propietario__user",
-        "veterinario",
-        "historial_medico",
+    base_queryset = (
+        Cita.objects.select_related(
+            "paciente",
+            "paciente__propietario__user",
+            "veterinario",
+            "historial_medico",
+        )
+        .prefetch_related("farmacos_utilizados")
     )
 
     queryset = base_queryset
@@ -1539,7 +1542,8 @@ def asignar_veterinario_citas(request):
 @login_required
 def atender_cita(request, cita_id):
     cita = get_object_or_404(
-        Cita.objects.select_related("paciente", "paciente__propietario__user"),
+        Cita.objects.select_related("paciente", "paciente__propietario__user")
+        .prefetch_related("farmacos_utilizados"),
         id=cita_id,
     )
 
@@ -1562,6 +1566,30 @@ def atender_cita(request, cita_id):
         return redirect("dashboard")
 
     historial_existente = getattr(cita, "historial_medico", None)
+    farmacos_qs = (
+        Farmaco.objects.filter(sucursal=cita.sucursal)
+        .order_by("categoria", "nombre")
+        .select_related("sucursal")
+    )
+    farmacos_catalogo = []
+    catalogo_por_codigo = {}
+    for farmaco in farmacos_qs:
+        catalogo_por_codigo.setdefault(farmaco.categoria, []).append(farmaco)
+    for codigo, etiqueta in Farmaco.Categoria.choices:
+        items = catalogo_por_codigo.get(codigo, [])
+        if items:
+            farmacos_catalogo.append(
+                {
+                    "codigo": codigo,
+                    "nombre": etiqueta,
+                    "items": items,
+                }
+            )
+
+    seleccion_actual = list(
+        cita.farmacos_utilizados.values_list("id", flat=True)
+    )
+    utilizo_farmacos = bool(seleccion_actual)
 
     if request.method == "POST":
         diagnostico = request.POST.get("diagnostico")
@@ -1573,6 +1601,8 @@ def atender_cita(request, cita_id):
         proximo_control = request.POST.get("proximo_control") or None
         sin_proximo_control = bool(request.POST.get("sin_proximo_control"))
         adjuntar_estudios = bool(request.POST.get("adjuntar_estudios"))
+        utilizo_farmacos = bool(request.POST.get("utilizo_farmacos"))
+        farmacos_seleccionados_ids = request.POST.getlist("farmacos_utilizados")
 
         if sin_proximo_control:
             proximo_control = None
@@ -1601,6 +1631,15 @@ def atender_cita(request, cita_id):
         cita.estado = "atendida"
         cita.save(update_fields=["estado"])
 
+        if utilizo_farmacos:
+            farmacos_seleccionados = Farmaco.objects.filter(
+                sucursal=cita.sucursal,
+                id__in=farmacos_seleccionados_ids,
+            )
+            cita.farmacos_utilizados.set(farmacos_seleccionados)
+        else:
+            cita.farmacos_utilizados.clear()
+
         messages.success(
             request, f"Cita de {cita.paciente.nombre} atendida correctamente ✅"
         )
@@ -1609,7 +1648,13 @@ def atender_cita(request, cita_id):
     return render(
         request,
         "core/atender_cita.html",
-        {"cita": cita, "historial_existente": historial_existente},
+        {
+            "cita": cita,
+            "historial_existente": historial_existente,
+            "farmacos_catalogo": farmacos_catalogo,
+            "farmacos_seleccionados": seleccion_actual,
+            "utilizo_farmacos": utilizo_farmacos,
+        },
     )
 
 
@@ -1627,11 +1672,14 @@ def mis_historiales(request):
 
 @login_required
 def detalle_cita(request, cita_id):
-    base_queryset = Cita.objects.select_related(
-        "paciente",
-        "paciente__propietario__user",
-        "veterinario",
-        "historial_medico",
+    base_queryset = (
+        Cita.objects.select_related(
+            "paciente",
+            "paciente__propietario__user",
+            "veterinario",
+            "historial_medico",
+        )
+        .prefetch_related("farmacos_utilizados")
     )
     if request.user.rol in {"ADMIN", "ADMIN_OP"}:
         base_queryset = _filtrar_por_sucursal(base_queryset, request.user)
