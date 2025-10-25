@@ -35,33 +35,33 @@
                         <div class="row g-4">
                             <div class="col-lg-6">
                                 <label for="diagnostico" class="form-label fw-semibold text-muted text-uppercase small">Diagnóstico *</label>
-                                <textarea id="diagnostico" name="diagnostico" rows="4" class="form-control form-control-lg" required>{{ historial_existente.diagnostico|default:"" }}</textarea>
+                                <textarea id="diagnostico" name="diagnostico" rows="4" class="form-control form-control-lg" required>{{ form_values.diagnostico }}</textarea>
                                 <div class="invalid-feedback">Ingresá el diagnóstico realizado.</div>
                             </div>
                             <div class="col-lg-6">
                                 <label for="tratamiento" class="form-label fw-semibold text-muted text-uppercase small">Plan terapéutico *</label>
-                                <textarea id="tratamiento" name="tratamiento" rows="4" class="form-control form-control-lg" required>{{ historial_existente.tratamiento|default:"" }}</textarea>
+                                <textarea id="tratamiento" name="tratamiento" rows="4" class="form-control form-control-lg" required>{{ form_values.tratamiento }}</textarea>
                                 <div class="invalid-feedback">Detallá el tratamiento recomendado.</div>
                             </div>
                         </div>
 
                         <div class="mt-4">
                             <label for="notas" class="form-label fw-semibold text-muted text-uppercase small">Notas clínicas</label>
-                            <textarea id="notas" name="notas" rows="3" class="form-control">{{ historial_existente.notas|default:"" }}</textarea>
+                            <textarea id="notas" name="notas" rows="3" class="form-control">{{ form_values.notas }}</textarea>
                         </div>
 
                         <div class="row g-4 mt-1">
                             <div class="col-md-4">
                                 <label for="peso" class="form-label fw-semibold text-muted text-uppercase small">Peso (kg)</label>
-                                <input type="number" step="0.01" min="0" class="form-control" id="peso" name="peso" value="{{ historial_existente.peso|default:"" }}">
+                                <input type="number" step="0.01" min="0" class="form-control" id="peso" name="peso" value="{{ form_values.peso }}">
                             </div>
                             <div class="col-md-4">
                                 <label for="temperatura" class="form-label fw-semibold text-muted text-uppercase small">Temperatura (°C)</label>
-                                <input type="number" step="0.1" class="form-control" id="temperatura" name="temperatura" value="{{ historial_existente.temperatura|default:"" }}">
+                                <input type="number" step="0.1" class="form-control" id="temperatura" name="temperatura" value="{{ form_values.temperatura }}">
                             </div>
                             <div class="col-md-4">
                                 <label for="examenes" class="form-label fw-semibold text-muted text-uppercase small">Estudios y exámenes</label>
-                                <textarea id="examenes" name="examenes" rows="1" class="form-control" placeholder="Ecografías, laboratorio, radiografías...">{{ historial_existente.examenes|default:"" }}</textarea>
+                                <textarea id="examenes" name="examenes" rows="1" class="form-control" placeholder="Ecografías, laboratorio, radiografías...">{{ form_values.examenes }}</textarea>
                             </div>
                         </div>
 
@@ -81,21 +81,47 @@
 
                             <div id="seleccion-farmacos" class="mt-4 {% if not utilizo_farmacos %}d-none{% endif %}">
                                 {% if farmacos_catalogo %}
-                                <label for="farmacos_utilizados" class="form-label fw-semibold text-muted text-uppercase small">Seleccioná los medicamentos utilizados</label>
-                                <select id="farmacos_utilizados" name="farmacos_utilizados" class="form-select" multiple size="8">
-                                    {% for categoria in farmacos_catalogo %}
-                                    <optgroup label="{{ categoria.nombre }}">
-                                        {% for farmaco in categoria.items %}
-                                        <option value="{{ farmaco.id }}" {% if farmaco.id in farmacos_seleccionados %}selected{% endif %}>
-                                            {{ farmaco.nombre }} — Stock: {{ farmaco.stock }}
-                                        </option>
-                                        {% endfor %}
-                                    </optgroup>
-                                    {% endfor %}
-                                </select>
-                                <p class="text-muted small mt-2 mb-0">
-                                    Mantené presionada la tecla Ctrl (o Cmd en Mac) para seleccionar múltiples opciones.
-                                </p>
+                                <div class="border rounded-4 p-4 bg-white shadow-sm">
+                                    <div class="row g-3 align-items-end">
+                                        <div class="col-lg-6">
+                                            <label for="selector-farmaco" class="form-label fw-semibold text-muted text-uppercase small">Fármaco del inventario</label>
+                                            <select id="selector-farmaco" class="form-select">
+                                                <option value="">Seleccioná un medicamento disponible…</option>
+                                                {% for categoria in farmacos_catalogo %}
+                                                <optgroup label="{{ categoria.nombre }}">
+                                                    {% for farmaco in categoria.items %}
+                                                    <option value="{{ farmaco.id }}">{{ farmaco.nombre }} — Stock: {{ farmaco.stock }}</option>
+                                                    {% endfor %}
+                                                </optgroup>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="col-lg-3">
+                                            <label for="cantidad-farmaco" class="form-label fw-semibold text-muted text-uppercase small">Cantidad utilizada</label>
+                                            <input type="number" min="1" step="1" id="cantidad-farmaco" class="form-control" placeholder="Ej: 1">
+                                        </div>
+                                        <div class="col-lg-3 text-lg-end">
+                                            <button type="button" id="agregar-farmaco" class="btn btn-outline-primary w-100">
+                                                <i class="bi bi-plus-circle me-2"></i>Agregar al registro
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div id="alerta-farmacos" class="alert d-none mt-3 mb-0" role="alert"></div>
+                                    <div class="table-responsive mt-4">
+                                        <table class="table table-sm align-middle mb-0">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th class="text-muted text-uppercase small">Medicamento</th>
+                                                    <th class="text-muted text-uppercase small">Categoría</th>
+                                                    <th class="text-muted text-uppercase small text-center">Cantidad</th>
+                                                    <th class="text-end text-muted text-uppercase small">Acciones</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="lista-farmacos"></tbody>
+                                        </table>
+                                    </div>
+                                    <p class="text-muted small mt-3 mb-0" id="mensaje-sin-farmacos">No se registraron fármacos en esta atención todavía.</p>
+                                </div>
                                 {% else %}
                                 <div class="alert alert-warning d-flex align-items-center gap-3 mb-0 rounded-3" role="alert">
                                     <i class="bi bi-exclamation-triangle-fill text-warning fs-4"></i>
@@ -109,17 +135,17 @@
 
                         <div class="border rounded-4 p-4 mt-4 bg-light">
                             <div class="form-check form-switch mb-3">
-                                <input class="form-check-input" type="checkbox" role="switch" id="sin_proximo_control" name="sin_proximo_control" {% if historial_existente.sin_proximo_control %}checked{% endif %}>
+                                <input class="form-check-input" type="checkbox" role="switch" id="sin_proximo_control" name="sin_proximo_control" {% if form_values.sin_proximo_control %}checked{% endif %}>
                                 <label class="form-check-label fw-semibold" for="sin_proximo_control">Este caso no requiere programar próximo control</label>
                             </div>
                             <div class="row g-3 align-items-end">
                                 <div class="col-md-6">
                                     <label for="proximo_control" class="form-label fw-semibold text-muted text-uppercase small">Próximo control</label>
-                                    <input type="date" class="form-control" id="proximo_control" name="proximo_control" value="{{ historial_existente.proximo_control|date:'Y-m-d' }}">
+                                    <input type="date" class="form-control" id="proximo_control" name="proximo_control" value="{{ form_values.proximo_control }}">
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="adjuntar_estudios" name="adjuntar_estudios">
+                                        <input class="form-check-input" type="checkbox" id="adjuntar_estudios" name="adjuntar_estudios" {% if form_values.adjuntar_estudios %}checked{% endif %}>
                                         <label class="form-check-label fw-semibold" for="adjuntar_estudios">
                                             Adjuntar estudios e imágenes clínicas
                                         </label>
@@ -154,6 +180,9 @@
     </div>
 </div>
 
+{{ farmacos_disponibles_json|json_script:"farmacos-catalogo-data" }}
+{{ farmacos_seleccionados|json_script:"farmacos-seleccionados-iniciales" }}
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const sinProximoControl = document.getElementById('sin_proximo_control');
@@ -163,6 +192,91 @@ document.addEventListener('DOMContentLoaded', function () {
     const inputEstudio = document.getElementById('estudio_imagen');
     const utilizoFarmacos = document.getElementById('utilizo_farmacos');
     const seleccionFarmacos = document.getElementById('seleccion-farmacos');
+    const selectorFarmaco = document.getElementById('selector-farmaco');
+    const cantidadFarmaco = document.getElementById('cantidad-farmaco');
+    const botonAgregar = document.getElementById('agregar-farmaco');
+    const listaFarmacos = document.getElementById('lista-farmacos');
+    const mensajeSinFarmacos = document.getElementById('mensaje-sin-farmacos');
+    const alertaFarmacos = document.getElementById('alerta-farmacos');
+    const catalogoDataEl = document.getElementById('farmacos-catalogo-data');
+    const seleccionInicialEl = document.getElementById('farmacos-seleccionados-iniciales');
+
+    const catalogo = catalogoDataEl ? JSON.parse(catalogoDataEl.textContent) : [];
+    const seleccionInicial = seleccionInicialEl ? JSON.parse(seleccionInicialEl.textContent) : [];
+    const catalogoMap = new Map(catalogo.map(item => [String(item.id), item]));
+    const registro = new Map();
+
+    function mostrarAlertaFarmacos(mensaje, tipo = 'danger') {
+        if (!alertaFarmacos) return;
+        alertaFarmacos.textContent = mensaje;
+        alertaFarmacos.classList.remove('d-none', 'alert-danger', 'alert-warning', 'alert-info', 'alert-success');
+        alertaFarmacos.classList.add(`alert-${tipo}`);
+    }
+
+    function limpiarAlertaFarmacos() {
+        if (!alertaFarmacos) return;
+        alertaFarmacos.classList.add('d-none');
+        alertaFarmacos.textContent = '';
+        alertaFarmacos.classList.remove('alert-danger', 'alert-warning', 'alert-info', 'alert-success');
+    }
+
+    function renderListaFarmacos() {
+        if (!listaFarmacos) return;
+        listaFarmacos.innerHTML = '';
+        if (registro.size === 0) {
+            mensajeSinFarmacos && mensajeSinFarmacos.classList.remove('d-none');
+            return;
+        }
+        mensajeSinFarmacos && mensajeSinFarmacos.classList.add('d-none');
+
+        registro.forEach((item, id) => {
+            const fila = document.createElement('tr');
+            fila.dataset.farmacoId = id;
+
+            const colNombre = document.createElement('td');
+            const titulo = document.createElement('div');
+            titulo.className = 'fw-semibold text-dark';
+            titulo.textContent = item.nombre;
+            colNombre.appendChild(titulo);
+            if (item.descripcion) {
+                const descripcion = document.createElement('div');
+                descripcion.className = 'text-muted small mb-0';
+                const texto = item.descripcion.length > 180 ? `${item.descripcion.slice(0, 177)}…` : item.descripcion;
+                descripcion.textContent = texto;
+                colNombre.appendChild(descripcion);
+            }
+
+            const colCategoria = document.createElement('td');
+            const badge = document.createElement('span');
+            badge.className = 'badge bg-primary-subtle text-primary';
+            badge.textContent = item.categoria_nombre;
+            colCategoria.appendChild(badge);
+
+            const colCantidad = document.createElement('td');
+            colCantidad.className = 'text-center fw-semibold';
+            colCantidad.textContent = item.cantidad;
+
+            const colAcciones = document.createElement('td');
+            colAcciones.className = 'text-end';
+            const hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = 'farmacos_utilizados';
+            hidden.value = `${id}::${item.cantidad}`;
+            const botonEliminar = document.createElement('button');
+            botonEliminar.type = 'button';
+            botonEliminar.className = 'btn btn-link text-danger btn-sm eliminar-farmaco';
+            botonEliminar.innerHTML = '<i class="bi bi-trash3"></i><span class="ms-1">Quitar</span>';
+            colAcciones.appendChild(hidden);
+            colAcciones.appendChild(botonEliminar);
+
+            fila.appendChild(colNombre);
+            fila.appendChild(colCategoria);
+            fila.appendChild(colCantidad);
+            fila.appendChild(colAcciones);
+
+            listaFarmacos.appendChild(fila);
+        });
+    }
 
     function toggleProximoControl() {
         if (!sinProximoControl || !proximoControlInput) return;
@@ -186,12 +300,84 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!seleccionFarmacos) return;
         const mostrar = utilizoFarmacos && utilizoFarmacos.checked;
         seleccionFarmacos.classList.toggle('d-none', !mostrar);
+        if (!mostrar) {
+            registro.clear();
+            renderListaFarmacos();
+            limpiarAlertaFarmacos();
+        }
     }
+
+    botonAgregar && botonAgregar.addEventListener('click', function () {
+        if (!selectorFarmaco || !cantidadFarmaco) return;
+        const seleccionado = selectorFarmaco.value;
+        if (!seleccionado) {
+            mostrarAlertaFarmacos('Seleccioná un fármaco del inventario para agregarlo al registro.', 'warning');
+            return;
+        }
+
+        const infoFarmaco = catalogoMap.get(String(seleccionado));
+        if (!infoFarmaco) {
+            mostrarAlertaFarmacos('El fármaco seleccionado ya no está disponible en el inventario.', 'danger');
+            return;
+        }
+
+        const cantidad = parseInt(cantidadFarmaco.value, 10);
+        if (!cantidad || cantidad <= 0) {
+            mostrarAlertaFarmacos('Ingresá una cantidad válida (mayor que cero).', 'warning');
+            return;
+        }
+
+        if (infoFarmaco.stock !== null && infoFarmaco.stock >= 0 && cantidad > infoFarmaco.stock) {
+            mostrarAlertaFarmacos('La cantidad indicada supera el stock disponible en el inventario.', 'warning');
+            return;
+        }
+
+        registro.set(String(infoFarmaco.id), {
+            ...infoFarmaco,
+            cantidad: cantidad,
+        });
+        renderListaFarmacos();
+        limpiarAlertaFarmacos();
+        selectorFarmaco.value = '';
+        cantidadFarmaco.value = '';
+    });
+
+    listaFarmacos && listaFarmacos.addEventListener('click', function (event) {
+        const boton = event.target.closest('.eliminar-farmaco');
+        if (!boton) return;
+        event.preventDefault();
+        const fila = boton.closest('tr');
+        if (!fila) return;
+        const farmacoId = fila.dataset.farmacoId;
+        registro.delete(farmacoId);
+        renderListaFarmacos();
+        limpiarAlertaFarmacos();
+    });
+
+    seleccionInicial.forEach(item => {
+        if (!item || !item.id) {
+            return;
+        }
+        const id = String(item.id);
+        const base = catalogoMap.get(id) || {
+            id: item.id,
+            nombre: item.nombre,
+            categoria: item.categoria,
+            categoria_nombre: item.categoria_nombre,
+            descripcion: item.descripcion || '',
+            stock: item.stock ?? null,
+        };
+        registro.set(id, {
+            ...base,
+            cantidad: item.cantidad || 0,
+        });
+    });
 
     sinProximoControl && sinProximoControl.addEventListener('change', toggleProximoControl);
     adjuntarCheckbox && adjuntarCheckbox.addEventListener('change', toggleAdjunto);
     utilizoFarmacos && utilizoFarmacos.addEventListener('change', toggleFarmacos);
 
+    renderListaFarmacos();
     toggleProximoControl();
     toggleAdjunto();
     toggleFarmacos();

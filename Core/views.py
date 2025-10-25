@@ -5,8 +5,8 @@ from itertools import chain
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
-from django.db import connection
-from django.db.models import Count, Q
+from django.db import connection, transaction
+from django.db.models import Count, F, Q
 from django.db.utils import OperationalError, ProgrammingError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -15,6 +15,7 @@ from django.utils import timezone
 from .forms import FarmacoForm, ProductoForm, VacunaRegistroForm
 from .models import (
     Cita,
+    CitaFarmaco,
     Farmaco,
     HistorialMedico,
     Paciente,
@@ -947,8 +948,10 @@ def mis_citas(request):
             "paciente__propietario__user",
             "veterinario",
             "historial_medico",
+        ).prefetch_related(
+            "farmacos_utilizados",
+            "administraciones_farmacos__farmaco",
         )
-        .prefetch_related("farmacos_utilizados")
     )
 
     queryset = base_queryset
@@ -1543,7 +1546,7 @@ def asignar_veterinario_citas(request):
 def atender_cita(request, cita_id):
     cita = get_object_or_404(
         Cita.objects.select_related("paciente", "paciente__propietario__user")
-        .prefetch_related("farmacos_utilizados"),
+        .prefetch_related("farmacos_utilizados", "administraciones_farmacos__farmaco"),
         id=cita_id,
     )
 
@@ -1566,11 +1569,22 @@ def atender_cita(request, cita_id):
         return redirect("dashboard")
 
     historial_existente = getattr(cita, "historial_medico", None)
-    farmacos_qs = (
+    administraciones_actuales = list(
+        cita.administraciones_farmacos.select_related("farmaco").order_by(
+            "farmaco__nombre"
+        )
+    )
+    administraciones_por_id = {
+        admin.farmaco_id: admin for admin in administraciones_actuales
+    }
+
+    farmacos_qs = list(
         Farmaco.objects.filter(sucursal=cita.sucursal)
         .order_by("categoria", "nombre")
         .select_related("sucursal")
     )
+    inventario_por_id = {farmaco.id: farmaco for farmaco in farmacos_qs}
+
     farmacos_catalogo = []
     catalogo_por_codigo = {}
     for farmaco in farmacos_qs:
@@ -1586,10 +1600,33 @@ def atender_cita(request, cita_id):
                 }
             )
 
-    seleccion_actual = list(
-        cita.farmacos_utilizados.values_list("id", flat=True)
-    )
-    utilizo_farmacos = bool(seleccion_actual)
+    farmacos_serializados = [
+        {
+            "id": farmaco.id,
+            "nombre": farmaco.nombre,
+            "categoria": farmaco.categoria,
+            "categoria_nombre": farmaco.get_categoria_display(),
+            "descripcion": farmaco.descripcion or "",
+            "stock": farmaco.stock,
+        }
+        for farmaco in farmacos_qs
+    ]
+
+    seleccion_detalle = [
+        {
+            "id": admin.farmaco_id,
+            "nombre": admin.farmaco.nombre,
+            "categoria": admin.farmaco.categoria,
+            "categoria_nombre": admin.farmaco.get_categoria_display(),
+            "descripcion": admin.farmaco.descripcion,
+            "stock": admin.farmaco.stock,
+            "cantidad": admin.cantidad,
+        }
+        for admin in administraciones_actuales
+    ]
+
+    utilizo_farmacos = bool(seleccion_detalle)
+    form_values = {}
 
     if request.method == "POST":
         diagnostico = request.POST.get("diagnostico")
@@ -1602,60 +1639,218 @@ def atender_cita(request, cita_id):
         sin_proximo_control = bool(request.POST.get("sin_proximo_control"))
         adjuntar_estudios = bool(request.POST.get("adjuntar_estudios"))
         utilizo_farmacos = bool(request.POST.get("utilizo_farmacos"))
-        farmacos_seleccionados_ids = request.POST.getlist("farmacos_utilizados")
+        entradas_farmacos = request.POST.getlist("farmacos_utilizados")
 
         if sin_proximo_control:
             proximo_control = None
 
-        historial_defaults = {
-            "paciente": cita.paciente,
-            "veterinario": request.user,
+        form_values = {
             "diagnostico": diagnostico,
             "tratamiento": tratamiento,
             "notas": notas,
-            "peso": peso,
-            "temperatura": temperatura,
+            "peso": peso or "",
+            "temperatura": temperatura or "",
             "examenes": examenes,
-            "proximo_control": proximo_control,
+            "proximo_control": proximo_control or "",
             "sin_proximo_control": sin_proximo_control,
+            "adjuntar_estudios": adjuntar_estudios,
         }
 
-        if adjuntar_estudios and "estudio_imagen" in request.FILES:
-            historial_defaults["imagenes"] = request.FILES["estudio_imagen"]
+        seleccion_post = []
+        mensajes_error = []
+        for entrada in entradas_farmacos:
+            try:
+                farmaco_id_raw, cantidad_raw = entrada.split("::", 1)
+                farmaco_id = int(farmaco_id_raw)
+                cantidad = int(cantidad_raw)
+            except (TypeError, ValueError):
+                mensajes_error.append(
+                    "No se pudo interpretar la selección de fármacos enviada. Intentalo nuevamente."
+                )
+                continue
 
-        HistorialMedico.objects.update_or_create(
-            cita=cita,
-            defaults=historial_defaults,
-        )
+            if cantidad <= 0:
+                mensajes_error.append(
+                    "Ingresá una cantidad válida (mayor que cero) para cada fármaco utilizado."
+                )
+                continue
 
-        cita.estado = "atendida"
-        cita.save(update_fields=["estado"])
+            seleccion_post.append((farmaco_id, cantidad))
 
-        if utilizo_farmacos:
-            farmacos_seleccionados = Farmaco.objects.filter(
-                sucursal=cita.sucursal,
-                id__in=farmacos_seleccionados_ids,
+        if utilizo_farmacos and not seleccion_post:
+            mensajes_error.append(
+                "Seleccioná al menos un fármaco del inventario e indicá la cantidad administrada."
             )
-            cita.farmacos_utilizados.set(farmacos_seleccionados)
-        else:
-            cita.farmacos_utilizados.clear()
 
-        messages.success(
-            request, f"Cita de {cita.paciente.nombre} atendida correctamente ✅"
+        if mensajes_error:
+            for mensaje in mensajes_error:
+                messages.error(request, mensaje)
+
+        if not mensajes_error:
+            try:
+                with transaction.atomic():
+                    historial_defaults = {
+                        "paciente": cita.paciente,
+                        "veterinario": request.user,
+                        "diagnostico": diagnostico,
+                        "tratamiento": tratamiento,
+                        "notas": notas,
+                        "peso": peso,
+                        "temperatura": temperatura,
+                        "examenes": examenes,
+                        "proximo_control": proximo_control,
+                        "sin_proximo_control": sin_proximo_control,
+                    }
+
+                    if adjuntar_estudios and "estudio_imagen" in request.FILES:
+                        historial_defaults["imagenes"] = request.FILES["estudio_imagen"]
+
+                    HistorialMedico.objects.update_or_create(
+                        cita=cita,
+                        defaults=historial_defaults,
+                    )
+
+                    cita.estado = "atendida"
+                    cita.save(update_fields=["estado"])
+
+                    if utilizo_farmacos:
+                        existentes = {
+                            admin.farmaco_id: admin
+                            for admin in CitaFarmaco.objects.select_for_update().filter(
+                                cita=cita
+                            )
+                        }
+                        nuevos_map = {fid: cantidad for fid, cantidad in seleccion_post}
+                        ids_para_bloquear = set(existentes.keys()) | set(nuevos_map.keys())
+
+                        if ids_para_bloquear:
+                            farmacos_map = {
+                                farmaco.id: farmaco
+                                for farmaco in Farmaco.objects.select_for_update()
+                                .filter(sucursal=cita.sucursal, id__in=ids_para_bloquear)
+                            }
+
+                            faltantes = ids_para_bloquear - set(farmacos_map.keys())
+                            if faltantes:
+                                raise ValueError(
+                                    "Uno de los fármacos seleccionados ya no pertenece al inventario de la sucursal."
+                                )
+
+                            for fid in ids_para_bloquear:
+                                anterior = existentes.get(fid)
+                                anterior_cantidad = anterior.cantidad if anterior else 0
+                                nueva_cantidad = nuevos_map.get(fid, 0)
+                                delta = nueva_cantidad - anterior_cantidad
+                                if delta > 0 and farmacos_map[fid].stock < delta:
+                                    raise ValueError(
+                                        (
+                                            "Stock insuficiente para {nombre}. Disponible: {disponible}."
+                                        ).format(
+                                            nombre=farmacos_map[fid].nombre,
+                                            disponible=farmacos_map[fid].stock,
+                                        )
+                                    )
+
+                            for fid in ids_para_bloquear:
+                                anterior = existentes.get(fid)
+                                anterior_cantidad = anterior.cantidad if anterior else 0
+                                nueva_cantidad = nuevos_map.get(fid, 0)
+                                delta = nueva_cantidad - anterior_cantidad
+                                if delta:
+                                    Farmaco.objects.filter(
+                                        id=fid, sucursal=cita.sucursal
+                                    ).update(stock=F("stock") - delta)
+
+                            for fid, cantidad in nuevos_map.items():
+                                registro = existentes.get(fid)
+                                if registro:
+                                    if registro.cantidad != cantidad:
+                                        registro.cantidad = cantidad
+                                        registro.save(update_fields=["cantidad"])
+                                else:
+                                    CitaFarmaco.objects.create(
+                                        cita=cita,
+                                        farmaco_id=fid,
+                                        cantidad=cantidad,
+                                    )
+
+                            for fid, registro in existentes.items():
+                                if fid not in nuevos_map:
+                                    registro.delete()
+                    else:
+                        registros_previos = list(
+                            CitaFarmaco.objects.select_for_update().filter(cita=cita)
+                        )
+                        if registros_previos:
+                            for registro in registros_previos:
+                                Farmaco.objects.filter(
+                                    id=registro.farmaco_id, sucursal=cita.sucursal
+                                ).update(stock=F("stock") + registro.cantidad)
+                                registro.delete()
+
+            except ValueError as error:
+                messages.error(request, str(error))
+            else:
+                messages.success(
+                    request,
+                    f"Cita de {cita.paciente.nombre} atendida correctamente ✅",
+                )
+                return redirect("detalle_cita", cita_id=cita.id)
+
+        if seleccion_post:
+            seleccion_detalle = []
+            for fid, cantidad in seleccion_post:
+                farmaco = inventario_por_id.get(fid)
+                if not farmaco:
+                    registro_previo = administraciones_por_id.get(fid)
+                    farmaco = registro_previo.farmaco if registro_previo else None
+                if not farmaco:
+                    continue
+                seleccion_detalle.append(
+                    {
+                        "id": fid,
+                        "cantidad": cantidad,
+                        "nombre": farmaco.nombre,
+                        "categoria": farmaco.categoria,
+                        "categoria_nombre": farmaco.get_categoria_display(),
+                        "descripcion": farmaco.descripcion,
+                        "stock": farmaco.stock,
+                    }
+                )
+
+    if "sin_proximo_control" not in form_values:
+        form_values["sin_proximo_control"] = bool(
+            getattr(historial_existente, "sin_proximo_control", False)
         )
-        return redirect("detalle_cita", cita_id=cita.id)
+    if "proximo_control" not in form_values and getattr(
+        historial_existente, "proximo_control", None
+    ):
+        form_values["proximo_control"] = (
+            historial_existente.proximo_control.strftime("%Y-%m-%d")
+        )
+    if "peso" not in form_values and getattr(historial_existente, "peso", None) is not None:
+        form_values["peso"] = str(historial_existente.peso)
+    if "temperatura" not in form_values and getattr(
+        historial_existente, "temperatura", None
+    ) is not None:
+        form_values["temperatura"] = str(historial_existente.temperatura)
+    if "adjuntar_estudios" not in form_values:
+        form_values["adjuntar_estudios"] = False
+    for campo in ("diagnostico", "tratamiento", "notas", "examenes"):
+        if campo not in form_values and historial_existente:
+            form_values[campo] = getattr(historial_existente, campo, "") or ""
 
-    return render(
-        request,
-        "core/atender_cita.html",
-        {
-            "cita": cita,
-            "historial_existente": historial_existente,
-            "farmacos_catalogo": farmacos_catalogo,
-            "farmacos_seleccionados": seleccion_actual,
-            "utilizo_farmacos": utilizo_farmacos,
-        },
-    )
+    contexto = {
+        "cita": cita,
+        "historial_existente": historial_existente,
+        "farmacos_catalogo": farmacos_catalogo,
+        "farmacos_disponibles_json": farmacos_serializados,
+        "farmacos_seleccionados": seleccion_detalle,
+        "utilizo_farmacos": utilizo_farmacos,
+        "form_values": form_values,
+    }
+
+    return render(request, "core/atender_cita.html", contexto)
 
 
 @login_required
@@ -1678,8 +1873,10 @@ def detalle_cita(request, cita_id):
             "paciente__propietario__user",
             "veterinario",
             "historial_medico",
+        ).prefetch_related(
+            "farmacos_utilizados",
+            "administraciones_farmacos__farmaco",
         )
-        .prefetch_related("farmacos_utilizados")
     )
     if request.user.rol in {"ADMIN", "ADMIN_OP"}:
         base_queryset = _filtrar_por_sucursal(base_queryset, request.user)

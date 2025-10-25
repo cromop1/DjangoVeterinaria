@@ -36,8 +36,8 @@
         </div>
     </div>
 
-    {% with farmacos=cita.farmacos_utilizados.all %}
-    {% if farmacos %}
+    {% with administraciones=cita.administraciones_farmacos.all %}
+    {% if administraciones %}
     <div class="card mb-4 shadow-sm rounded-4 border-0" style="border-left: 6px solid #0ea5e9;">
         <div class="card-header bg-gradient fw-bold d-flex align-items-center">
             <i class="bi bi-prescription2 me-2 text-dark fs-4"></i>
@@ -48,7 +48,8 @@
                 Registro de medicamentos suministrados desde el inventario de {{ cita.sucursal.nombre }} durante la atención.
             </p>
             <div class="row g-3">
-                {% for farmaco in farmacos %}
+                {% for registro in administraciones %}
+                {% with farmaco=registro.farmaco %}
                 <div class="col-md-6">
                     <div class="border rounded-4 p-3 h-100 bg-light">
                         <div class="d-flex justify-content-between align-items-start mb-2">
@@ -59,9 +60,11 @@
                         <div class="d-flex flex-wrap gap-3 text-muted small">
                             <span class="d-inline-flex align-items-center gap-1"><i class="bi bi-building me-1"></i>{{ farmaco.sucursal.nombre }}</span>
                             <span class="d-inline-flex align-items-center gap-1"><i class="bi bi-box-seam me-1"></i>Stock actual: {{ farmaco.stock }}</span>
+                            <span class="d-inline-flex align-items-center gap-1"><i class="bi bi-capsule me-1"></i>Administrado: {{ registro.cantidad }}</span>
                         </div>
                     </div>
                 </div>
+                {% endwith %}
                 {% endfor %}
             </div>
         </div>

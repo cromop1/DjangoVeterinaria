@@ -117,6 +117,8 @@ class Cita(models.Model):
         "Farmaco",
         blank=True,
         related_name="citas_utilizadas",
+        through="CitaFarmaco",
+        through_fields=("cita", "farmaco"),
         help_text="Medicamentos del inventario utilizados durante la atención.",
     )
 
@@ -234,6 +236,28 @@ class Farmaco(models.Model):
 
     def __str__(self):
         return f"{self.nombre} - {self.sucursal.nombre}"
+
+
+class CitaFarmaco(models.Model):
+    cita = models.ForeignKey(
+        "Cita",
+        on_delete=models.CASCADE,
+        related_name="administraciones_farmacos",
+    )
+    farmaco = models.ForeignKey(
+        "Farmaco",
+        on_delete=models.PROTECT,
+        related_name="administraciones",
+    )
+    cantidad = models.PositiveIntegerField(default=1)
+    registrado = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["farmaco__nombre"]
+        unique_together = ("cita", "farmaco")
+
+    def __str__(self):
+        return f"{self.cita_id} - {self.farmaco.nombre} ({self.cantidad})"
 
 
 # ----------------------------
