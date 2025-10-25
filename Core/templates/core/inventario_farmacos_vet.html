@@ -1,0 +1,104 @@
+{% extends "core/base.html" %}
+
+{% block title %}Inventario clínico{% endblock %}
+
+{% block main_class %}max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10{% endblock %}
+
+{% block content %}
+<div class="space-y-10">
+    <header class="space-y-4">
+        <p class="text-xs font-semibold uppercase tracking-[0.35em] text-gray-400">Recursos terapéuticos</p>
+        <h1 class="text-3xl font-bold text-gray-900 flex items-center gap-3">
+            <span class="inline-flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                <i class="fas fa-briefcase-medical"></i>
+            </span>
+            Farmacia clínica
+        </h1>
+        {% if sucursal %}
+            <p class="text-sm text-gray-600 max-w-3xl">
+                Revisá la disponibilidad de medicamentos para la sucursal <strong>{{ sucursal.nombre }}</strong>. Esta
+                información se sincroniza con el equipo administrativo para mantener un stock seguro y trazable.
+            </p>
+            <div class="flex flex-wrap gap-3 text-sm text-gray-500">
+                <span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 font-semibold text-emerald-700">
+                    <i class="fas fa-map-marker-alt"></i> {{ sucursal.direccion|default:"Sin dirección" }}
+                </span>
+                {% if sucursal.telefono %}
+                    <span class="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 font-semibold text-gray-600">
+                        <i class="fas fa-phone"></i> {{ sucursal.telefono }}
+                    </span>
+                {% endif %}
+            </div>
+        {% else %}
+            <p class="text-sm text-amber-700 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                No hay una sucursal asignada a tu perfil. Contacta al área administrativa para acceder al inventario.
+            </p>
+        {% endif %}
+    </header>
+
+    {% if sucursal %}
+        <section class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <article class="rounded-3xl border border-emerald-100 bg-white p-5 shadow-sm">
+                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Referencias activas</p>
+                <p class="mt-2 text-3xl font-bold text-emerald-600">{{ totales.items }}</p>
+                <p class="text-xs text-gray-500 mt-1">Presentaciones disponibles para uso clínico.</p>
+            </article>
+            <article class="rounded-3xl border border-sky-100 bg-white p-5 shadow-sm">
+                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Stock total</p>
+                <p class="mt-2 text-3xl font-bold text-sky-600">{{ totales.stock }}</p>
+                <p class="text-xs text-gray-500 mt-1">Unidades distribuidas en farmacia interna.</p>
+            </article>
+            <article class="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Última actualización</p>
+                {% if totales.ultima_actualizacion %}
+                    <p class="mt-2 text-lg font-semibold text-gray-900">{{ totales.ultima_actualizacion|date:"d/m/Y H:i" }}</p>
+                    <p class="text-xs text-gray-500 mt-1">Registro más reciente informado por administración.</p>
+                {% else %}
+                    <p class="mt-2 text-lg font-semibold text-gray-900">Sin datos</p>
+                    <p class="text-xs text-gray-500 mt-1">Aún no se cargaron movimientos.</p>
+                {% endif %}
+            </article>
+        </section>
+
+        {% if inventario %}
+            <section class="space-y-8">
+                {% for grupo in inventario %}
+                    <div class="rounded-3xl border border-gray-200 bg-white shadow-sm">
+                        <div class="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+                            <div>
+                                <h2 class="text-lg font-semibold text-gray-900">{{ grupo.nombre }}</h2>
+                                <p class="text-sm text-gray-500">Fármacos disponibles en esta familia terapéutica.</p>
+                            </div>
+                            <span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                                <i class="fas fa-vial"></i> {{ grupo.items|length }} formulaciones
+                            </span>
+                        </div>
+                        <div class="divide-y divide-gray-200">
+                            {% for farmaco in grupo.items %}
+                                <article class="px-6 py-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                                    <div>
+                                        <h3 class="text-base font-semibold text-gray-900">{{ farmaco.nombre }}</h3>
+                                        <p class="text-sm text-gray-500">{{ farmaco.descripcion }}</p>
+                                    </div>
+                                    <div class="flex flex-col items-start gap-2 md:items-end">
+                                        <span class="inline-flex items-center gap-2 rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">
+                                            <i class="fas fa-layer-group"></i>
+                                            {{ farmaco.stock }} unidades disponibles
+                                        </span>
+                                        <span class="text-xs text-gray-400">Actualizado {{ farmaco.actualizado|date:"d/m/Y H:i" }}</span>
+                                    </div>
+                                </article>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </section>
+        {% else %}
+            <div class="rounded-3xl border border-emerald-100 bg-emerald-50 px-6 py-8 text-center text-emerald-800">
+                <i class="fas fa-box-open text-3xl"></i>
+                <p class="mt-4 text-sm">Aún no hay medicamentos registrados para esta sucursal. El equipo administrativo puede cargarlos desde el panel correspondiente.</p>
+            </div>
+        {% endif %}
+    {% endif %}
+</div>
+{% endblock %}

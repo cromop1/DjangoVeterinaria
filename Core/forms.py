@@ -2,7 +2,7 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
-from .models import Producto
+from .models import Farmaco, Producto
 
 
 User = get_user_model()
@@ -58,6 +58,42 @@ class ProductoForm(forms.ModelForm):
         )
         self.fields["disponible"].widget.attrs.update({"class": "form-check-input"})
 
+
+class FarmacoForm(forms.ModelForm):
+    class Meta:
+        model = Farmaco
+        fields = ["sucursal", "nombre", "categoria", "descripcion", "stock"]
+        widgets = {
+            "descripcion": forms.Textarea(
+                attrs={
+                    "rows": 3,
+                    "class": "form-control",
+                    "placeholder": "Detalles, indicaciones y condiciones de almacenamiento",
+                }
+            ),
+        }
+
+    def __init__(self, *args, sucursales=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["nombre"].widget.attrs.update(
+            {"class": "form-control", "placeholder": "Nombre comercial o genérico"}
+        )
+        self.fields["categoria"].widget.attrs.update({"class": "form-select"})
+        self.fields["stock"].widget.attrs.update(
+            {"class": "form-control", "min": "0", "step": "1"}
+        )
+        self.fields["sucursal"].widget.attrs.update({"class": "form-select"})
+
+        if sucursales is not None:
+            self.fields["sucursal"].queryset = sucursales
+            if not self.instance.pk and not self.fields["sucursal"].initial:
+                primera = None
+                try:
+                    primera = sucursales.first()
+                except AttributeError:
+                    primera = sucursales[0] if sucursales else None
+                if primera:
+                    self.fields["sucursal"].initial = primera
 
 class VacunaRegistroForm(forms.Form):
     paciente_id = forms.IntegerField(widget=forms.HiddenInput)

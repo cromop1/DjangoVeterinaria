@@ -3,6 +3,7 @@ from django.contrib import admin
 from .forms import UserAdminForm
 from .models import (
     Cita,
+    Farmaco,
     HistorialMedico,
     Paciente,
     Producto,
@@ -140,6 +141,20 @@ class ProductoAdmin(admin.ModelAdmin):
     )
     list_filter = ("categoria", "disponible")
     search_fields = ("nombre", "descripcion")
+
+
+@admin.register(Farmaco)
+class FarmacoAdmin(admin.ModelAdmin):
+    list_display = (
+        "nombre",
+        "sucursal",
+        "categoria",
+        "stock",
+        "actualizado",
+    )
+    list_filter = ("sucursal", "categoria")
+    search_fields = ("nombre", "descripcion")
+    autocomplete_fields = ("sucursal",)
 
 
 @admin.register(VacunaRecomendada)

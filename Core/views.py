@@ -1,3 +1,4 @@
+from collections import defaultdict
 from datetime import datetime, time, timedelta
 from itertools import chain
 
@@ -5,15 +6,16 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.db import connection
-from django.db.models import Count, Q
+from django.db.models import Count, Max, Q, Sum
 from django.db.utils import OperationalError, ProgrammingError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 
-from .forms import ProductoForm, VacunaRegistroForm
+from .forms import FarmacoForm, ProductoForm, VacunaRegistroForm
 from .models import (
     Cita,
+    Farmaco,
     HistorialMedico,
     Paciente,
     Producto,
@@ -1372,16 +1374,30 @@ def asignar_veterinario_citas(request):
             "Asigna una sucursal a tu perfil para coordinar turnos pendientes.",
         )
 
-    veterinarios = _filtrar_por_sucursal(
-        _veterinarios_activos(),
+    veterinarios_queryset = _filtrar_por_sucursal(
+        _veterinarios_activos().select_related("sucursal"),
         request.user,
     )
-    citas_pendientes = _filtrar_por_sucursal(
-        Cita.objects.select_related("paciente", "paciente__propietario__user")
-        .filter(estado="pendiente")
-        .order_by("fecha_solicitada", "fecha_hora"),
-        request.user,
+    veterinarios_por_sucursal = defaultdict(list)
+    for veterinario in veterinarios_queryset:
+        veterinarios_por_sucursal[veterinario.sucursal_id].append(veterinario)
+
+    citas_pendientes = list(
+        _filtrar_por_sucursal(
+            Cita.objects.select_related(
+                "paciente",
+                "paciente__propietario__user",
+                "sucursal",
+            )
+            .filter(estado="pendiente")
+            .order_by("fecha_solicitada", "fecha_hora"),
+            request.user,
+        )
     )
+    for cita in citas_pendientes:
+        cita.veterinarios_disponibles = veterinarios_por_sucursal.get(
+            cita.sucursal_id, []
+        )
 
     if request.method == "POST":
         cita_id = request.POST.get("cita")
@@ -1455,7 +1471,9 @@ def asignar_veterinario_citas(request):
     return render(
         request,
         "core/asignar_veterinario_citas.html",
-        {"citas_pendientes": citas_pendientes, "veterinarios": veterinarios},
+        {
+            "citas_pendientes": citas_pendientes,
+        },
     )
 
 
@@ -1959,6 +1977,165 @@ def gestionar_veterinarios(request):
 
 
 @login_required
+def inventario_farmacos_admin(request):
+    usuario = request.user
+    if usuario.rol != "ADMIN" and not usuario.is_superuser:
+        messages.error(request, "Acceso exclusivo para administradores.")
+        return redirect("dashboard")
+
+    sucursales_queryset = _sucursales_para_usuario(usuario)
+    sucursales_disponibles = list(sucursales_queryset)
+    if usuario.is_superuser:
+        sucursales_para_formulario = Sucursal.objects.all()
+    else:
+        sucursales_para_formulario = Sucursal.objects.filter(
+            id__in=[s.id for s in sucursales_disponibles]
+        )
+    sucursales_para_formulario = sucursales_para_formulario.order_by("nombre")
+
+    sucursal_seleccionada = None
+    sucursal_param = request.GET.get("sucursal")
+    if sucursal_param:
+        sucursal_seleccionada = Sucursal.objects.filter(id=sucursal_param).first()
+        if sucursal_seleccionada and not _usuario_puede_gestionar_sucursal(
+            usuario, sucursal_seleccionada.id
+        ):
+            messages.error(
+                request,
+                "No tienes permisos para administrar el inventario de esa sucursal.",
+            )
+            return redirect("inventario_farmacos_admin")
+    elif getattr(usuario, "sucursal_id", None):
+        sucursal_seleccionada = Sucursal.objects.filter(id=usuario.sucursal_id).first()
+    elif sucursales_disponibles:
+        sucursal_seleccionada = sucursales_disponibles[0]
+
+    farmaco_en_edicion = None
+    editar_form = None
+    crear_form = FarmacoForm(
+        sucursales=sucursales_para_formulario,
+        initial={"sucursal": sucursal_seleccionada} if sucursal_seleccionada else {},
+    )
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+
+        if action == "crear":
+            form = FarmacoForm(request.POST, sucursales=sucursales_para_formulario)
+            if form.is_valid():
+                farmaco = form.save()
+                messages.success(
+                    request,
+                    "Fármaco registrado en el inventario de {}.".format(
+                        farmaco.sucursal.nombre
+                    ),
+                )
+                return redirect(
+                    f"{reverse('inventario_farmacos_admin')}?sucursal={farmaco.sucursal_id}"
+                )
+            crear_form = form
+            sucursal_data = form.cleaned_data.get("sucursal") if form.is_valid() else None
+            if not sucursal_data:
+                sucursal_id = form.data.get("sucursal")
+                sucursal_data = (
+                    Sucursal.objects.filter(id=sucursal_id).first()
+                    if sucursal_id
+                    else None
+                )
+            if sucursal_data:
+                sucursal_seleccionada = sucursal_data
+
+        elif action == "actualizar":
+            farmaco_id = request.POST.get("farmaco_id")
+            farmaco = get_object_or_404(Farmaco, id=farmaco_id)
+            if not _usuario_puede_gestionar_sucursal(usuario, farmaco.sucursal_id):
+                messages.error(
+                    request,
+                    "No tienes permisos para modificar este inventario.",
+                )
+                return redirect("inventario_farmacos_admin")
+
+            form = FarmacoForm(
+                request.POST,
+                instance=farmaco,
+                sucursales=sucursales_para_formulario,
+            )
+            if form.is_valid():
+                farmaco_actualizado = form.save()
+                messages.success(
+                    request,
+                    "Inventario actualizado correctamente para {}.".format(
+                        farmaco_actualizado.nombre
+                    ),
+                )
+                return redirect(
+                    f"{reverse('inventario_farmacos_admin')}?sucursal={farmaco_actualizado.sucursal_id}"
+                )
+            farmaco_en_edicion = farmaco
+            editar_form = form
+            sucursal_seleccionada = farmaco.sucursal
+
+        elif action == "eliminar":
+            farmaco_id = request.POST.get("farmaco_id")
+            farmaco = get_object_or_404(Farmaco, id=farmaco_id)
+            if not _usuario_puede_gestionar_sucursal(usuario, farmaco.sucursal_id):
+                messages.error(
+                    request,
+                    "No tienes permisos para eliminar este fármaco.",
+                )
+            else:
+                sucursal_id = farmaco.sucursal_id
+                nombre = farmaco.nombre
+                farmaco.delete()
+                messages.success(
+                    request,
+                    f"{nombre} eliminado del inventario.",
+                )
+                return redirect(
+                    f"{reverse('inventario_farmacos_admin')}?sucursal={sucursal_id}"
+                )
+        else:
+            messages.error(request, "Acción no reconocida para el inventario.")
+
+    editar_param = request.GET.get("editar")
+    if request.method == "GET" and editar_param and editar_form is None:
+        farmaco_en_edicion = get_object_or_404(Farmaco, id=editar_param)
+        if not _usuario_puede_gestionar_sucursal(
+            usuario, farmaco_en_edicion.sucursal_id
+        ):
+            messages.error(
+                request,
+                "No tienes permisos para modificar este inventario.",
+            )
+            return redirect("inventario_farmacos_admin")
+        editar_form = FarmacoForm(
+            instance=farmaco_en_edicion,
+            sucursales=sucursales_para_formulario,
+        )
+        sucursal_seleccionada = farmaco_en_edicion.sucursal
+
+    if sucursal_seleccionada:
+        farmacos = (
+            Farmaco.objects.select_related("sucursal")
+            .filter(sucursal=sucursal_seleccionada)
+            .order_by("categoria", "nombre")
+        )
+    else:
+        farmacos = Farmaco.objects.none()
+
+    contexto = {
+        "sucursales": sucursales_para_formulario,
+        "sucursal_seleccionada": sucursal_seleccionada,
+        "farmacos": farmacos,
+        "crear_form": crear_form,
+        "farmaco_en_edicion": farmaco_en_edicion,
+        "editar_form": editar_form,
+    }
+
+    return render(request, "core/inventario_farmacos_admin.html", contexto)
+
+
+@login_required
 def dashboard_veterinarios(request):
     if request.user.rol != "ADMIN":
         return redirect("dashboard")
@@ -2124,6 +2301,61 @@ def dashboard_veterinarios(request):
             "solicitudes_recientes": solicitudes_recientes,
         },
     )
+
+
+@login_required
+def inventario_farmacos_veterinario(request):
+    if request.user.rol != "VET":
+        messages.error(request, "Acceso exclusivo para el equipo veterinario.")
+        return redirect("dashboard")
+
+    sucursal = getattr(request.user, "sucursal", None)
+    if sucursal is None:
+        messages.warning(
+            request,
+            "Tu perfil no tiene una sucursal asociada. Solicita al equipo administrativo que actualice tu información para consultar el inventario farmacológico.",
+        )
+        contexto = {
+            "sucursal": None,
+            "inventario": [],
+            "totales": {"items": 0, "stock": 0, "ultima_actualizacion": None},
+        }
+        return render(request, "core/inventario_farmacos_vet.html", contexto)
+
+    inventario_qs = (
+        Farmaco.objects.filter(sucursal=sucursal)
+        .order_by("categoria", "nombre")
+        .select_related("sucursal")
+    )
+    farmacos = list(inventario_qs)
+    agregados = inventario_qs.aggregate(
+        total_stock=Sum("stock"),
+        ultima_actualizacion=Max("actualizado"),
+    )
+
+    inventario_por_categoria = []
+    for valor, etiqueta in Farmaco.Categoria.choices:
+        elementos = [f for f in farmacos if f.categoria == valor]
+        if elementos:
+            inventario_por_categoria.append(
+                {
+                    "codigo": valor,
+                    "nombre": etiqueta,
+                    "items": elementos,
+                }
+            )
+
+    contexto = {
+        "sucursal": sucursal,
+        "inventario": inventario_por_categoria,
+        "totales": {
+            "items": len(farmacos),
+            "stock": agregados.get("total_stock") or 0,
+            "ultima_actualizacion": agregados.get("ultima_actualizacion"),
+        },
+    }
+
+    return render(request, "core/inventario_farmacos_vet.html", contexto)
 
 
 @login_required

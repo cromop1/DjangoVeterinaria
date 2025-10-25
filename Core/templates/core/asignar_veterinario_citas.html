@@ -29,15 +29,24 @@
                         <div class="d-flex flex-column flex-md-row gap-2">
                             <input type="date" name="fecha" class="form-control" value="{{ cita.fecha_hora|date:'Y-m-d'|default:cita.fecha_solicitada|date:'Y-m-d' }}" required>
                             <input type="time" name="hora" class="form-control" value="{{ cita.fecha_hora|date:'H:i' }}" required>
-                            <select name="veterinario" class="form-select" required>
-                                <option value="" disabled selected>Seleccionar Veterinario</option>
-                                {% for vet in veterinarios %}
-                                    <option value="{{ vet.id }}">{{ vet.get_full_name|default:vet.username }}</option>
-                                {% endfor %}
+                            <select name="veterinario" class="form-select" {% if not cita.veterinarios_disponibles %}disabled{% else %}required{% endif %}>
+                                {% if cita.veterinarios_disponibles %}
+                                    <option value="" disabled selected>Seleccionar Veterinario</option>
+                                    {% for vet in cita.veterinarios_disponibles %}
+                                        <option value="{{ vet.id }}">{{ vet.get_full_name|default:vet.username }}</option>
+                                    {% endfor %}
+                                {% else %}
+                                    <option value="" selected>Sin profesionales disponibles en esta sucursal</option>
+                                {% endif %}
                             </select>
                         </div>
-                        <button type="submit" class="btn btn-success fw-bold mt-2 mt-md-0">Asignar</button>
+                        <button type="submit" class="btn btn-success fw-bold mt-2 mt-md-0" {% if not cita.veterinarios_disponibles %}disabled{% endif %}>Asignar</button>
                     </form>
+                    {% if not cita.veterinarios_disponibles %}
+                        <p class="text-danger small mt-2 mb-0">
+                            No hay veterinarios activos asociados a {{ cita.sucursal.nombre }}. Actualiza la asignación de profesionales en el panel de administración para continuar.
+                        </p>
+                    {% endif %}
                 </div>
             </div>
             {% endfor %}

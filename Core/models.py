@@ -148,6 +148,88 @@ class Cita(models.Model):
             f"¿Podemos coordinar el horario para la cita de {self.paciente.nombre} del {fecha}?"
         )
 
+
+# ----------------------------
+# Inventario farmacológico
+# ----------------------------
+class Farmaco(models.Model):
+    class Categoria(models.TextChoices):
+        ANALGESICOS_ANTIINFLAMATORIOS = (
+            "analgesicos_antiinflamatorios",
+            "Analgésicos y antiinflamatorios",
+        )
+        ANTIBIOTICOS = ("antibioticos", "Antibióticos")
+        ANTIPARASITARIOS_INTERNOS = (
+            "antiparasitarios_internos",
+            "Antiparasitarios internos",
+        )
+        ANTIPARASITARIOS_EXTERNOS = (
+            "antiparasitarios_externos",
+            "Antiparasitarios externos",
+        )
+        VACUNAS = ("vacunas", "Vacunas")
+        ANTIEMETICOS_DIGESTIVOS = (
+            "antiemeticos_digestivos",
+            "Antieméticos y digestivos",
+        )
+        SUEROS_SOLUCIONES = (
+            "sueros_soluciones",
+            "Sueros y soluciones",
+        )
+        ANTICONVULSIVOS = ("anticonvulsivos", "Anticonvulsivos")
+        CORTICOIDES = ("corticoides", "Corticoides")
+        ANESTESICOS_SEDANTES = (
+            "anestesicos_sedantes",
+            "Anestésicos y sedantes",
+        )
+        ANTISEPTICOS_TOPICOS = (
+            "antisepticos_topicos",
+            "Antisépticos y tópicos",
+        )
+        HORMONAS_ENDOCRINOS = (
+            "hormonas_endocrinos",
+            "Hormonas y tratamientos endocrinos",
+        )
+        VITAMINAS_SUPLEMENTOS = (
+            "vitaminas_suplementos",
+            "Vitaminas y suplementos nutricionales",
+        )
+        OFTALMICOS_OTICOS = (
+            "oftalmicos_oticos",
+            "Oftálmicos y óticos",
+        )
+        PRODUCTOS_DERMATOLOGICOS = (
+            "productos_dermatologicos",
+            "Productos dermatológicos",
+        )
+        EUTANASIA_EMERGENCIAS = (
+            "eutanasia_emergencias",
+            "Eutanasia y emergencias",
+        )
+
+    sucursal = models.ForeignKey(
+        Sucursal,
+        on_delete=models.PROTECT,
+        related_name="farmacos",
+    )
+    nombre = models.CharField(max_length=150)
+    categoria = models.CharField(
+        max_length=60,
+        choices=Categoria.choices,
+    )
+    descripcion = models.TextField()
+    stock = models.PositiveIntegerField(default=0)
+    creado = models.DateTimeField(auto_now_add=True)
+    actualizado = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["sucursal__nombre", "categoria", "nombre"]
+        unique_together = ("sucursal", "nombre")
+
+    def __str__(self):
+        return f"{self.nombre} - {self.sucursal.nombre}"
+
+
 # ----------------------------
 # Historial Médico
 # ----------------------------

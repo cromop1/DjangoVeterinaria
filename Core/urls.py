@@ -38,6 +38,11 @@ urlpatterns = [
     path('administrador/productos/', views.admin_productos_list, name='admin_productos_list'),
     path('administrador/productos/nuevo/', views.admin_producto_crear, name='admin_producto_crear'),
     path('administrador/productos/<int:producto_id>/editar/', views.admin_producto_editar, name='admin_producto_editar'),
+    path(
+        'administrador/inventario/farmacos/',
+        views.inventario_farmacos_admin,
+        name='inventario_farmacos_admin',
+    ),
 
     # ----------------------------
     # CITAS
@@ -66,6 +71,11 @@ urlpatterns = [
     path('propietario/<int:propietario_id>/', views.detalle_propietario, name='detalle_propietario'),
     path('asignar_veterinario/', views.gestionar_veterinarios, name="gestionar_veterinarios"),
     path("dashboard/veterinarios/", views.dashboard_veterinarios, name="dashboard_veterinarios"),
+    path(
+        "dashboard/veterinarios/farmacos/",
+        views.inventario_farmacos_veterinario,
+        name="inventario_farmacos_veterinario",
+    ),
     path(
         "dashboard/veterinarios/indicadores/",
         views.dashboard_veterinarios_indicadores,
