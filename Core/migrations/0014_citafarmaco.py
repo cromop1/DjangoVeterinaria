@@ -71,7 +71,12 @@ class Migration(migrations.Migration):
                 "unique_together": {("cita", "farmaco")},
             },
         ),
-        migrations.AlterField(
+        migrations.RunPython(copiar_relaciones_existentes, migrations.RunPython.noop),
+        migrations.RemoveField(
+            model_name="cita",
+            name="farmacos_utilizados",
+        ),
+        migrations.AddField(
             model_name="cita",
             name="farmacos_utilizados",
             field=models.ManyToManyField(
@@ -83,5 +88,4 @@ class Migration(migrations.Migration):
                 to="Core.farmaco",
             ),
         ),
-        migrations.RunPython(copiar_relaciones_existentes, migrations.RunPython.noop),
     ]
