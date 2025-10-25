@@ -1,16 +1,19 @@
+import json
 from collections import defaultdict
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 from itertools import chain
 
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.db import connection, transaction
-from django.db.models import Count, F, Q
+from django.db.models import Count, F, Q, Sum, Max
 from django.db.utils import OperationalError, ProgrammingError
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.html import escape
 
 from .forms import FarmacoForm, ProductoForm, VacunaRegistroForm
 from .models import (
@@ -154,6 +157,77 @@ def _inventario_por_sucursal(sucursal):
             "criticos": criticos,
         },
     }
+
+
+def _format_excel_value(value):
+    if value is None:
+        return ""
+    if isinstance(value, datetime):
+        if timezone.is_aware(value):
+            value = timezone.localtime(value)
+        return value.strftime("%d/%m/%Y %H:%M")
+    if isinstance(value, date):
+        return value.strftime("%d/%m/%Y")
+    if isinstance(value, bool):
+        return "Sí" if value else "No"
+    return str(value)
+
+
+def _excel_sections_response(filename, sections):
+    parts = [
+        "<html><head><meta charset='utf-8'></head>",
+        "<body style='font-family:Arial,Helvetica,sans-serif;font-size:13px;'>",
+    ]
+
+    for section in sections:
+        title = section.get("title")
+        description = section.get("description")
+        headers = section.get("headers", [])
+        rows = section.get("rows", [])
+
+        if title:
+            parts.append(
+                f"<h2 style='color:#0f172a;margin-bottom:0.35rem;'>{escape(title)}</h2>"
+            )
+        if description:
+            parts.append(
+                f"<p style='margin-top:0;margin-bottom:0.8rem;color:#334155;'>{escape(description)}</p>"
+            )
+
+        parts.append(
+            "<table border='1' cellspacing='0' cellpadding='6' style='border-collapse:collapse;margin-bottom:1.5rem;width:100%;'>"
+        )
+
+        if headers:
+            parts.append("<thead><tr>")
+            for header in headers:
+                parts.append(
+                    f"<th style='background-color:#0f172a;color:#ffffff;text-align:left;'>{escape(header)}</th>"
+                )
+            parts.append("</tr></thead>")
+
+        parts.append("<tbody>")
+        if rows:
+            for row in rows:
+                parts.append("<tr>")
+                for value in row:
+                    text = _format_excel_value(value)
+                    escaped = escape(text).replace("\n", "<br>")
+                    parts.append(f"<td>{escaped}</td>")
+                parts.append("</tr>")
+        else:
+            colspan = max(len(headers), 1)
+            parts.append(
+                f"<tr><td colspan='{colspan}' style='text-align:center;color:#64748b;'>Sin registros disponibles</td></tr>"
+            )
+        parts.append("</tbody></table>")
+
+    parts.append("</body></html>")
+
+    response = HttpResponse(content_type="application/vnd.ms-excel")
+    response["Content-Disposition"] = f"attachment; filename={filename}"
+    response.write("".join(parts))
+    return response
 
 
 # ----------------------------
@@ -508,6 +582,767 @@ def dashboard(request):
     return render(request, "core/dashboard.html", context)
 
 
+@login_required
+def dashboard_admin_analisis(request):
+    usuario = request.user
+    if not (usuario.is_superuser or usuario.rol == "ADMIN"):
+        messages.error(
+            request,
+            "Acceso restringido. Solo los administradores pueden consultar el módulo de análisis.",
+        )
+        return redirect("dashboard")
+
+    sucursales_qs = _sucursales_para_usuario(usuario)
+    sucursales = list(sucursales_qs)
+    sucursal_param = request.GET.get("sucursal", "")
+    mostrar_opcion_todas = usuario.is_superuser and len(sucursales) > 1
+    sucursal_seleccionada = None
+
+    if usuario.is_superuser:
+        if sucursal_param and sucursal_param not in {"", "todas"}:
+            sucursal_seleccionada = next(
+                (s for s in sucursales if str(s.id) == sucursal_param),
+                None,
+            )
+            if sucursal_seleccionada is None:
+                messages.error(request, "La sucursal seleccionada no es válida.")
+                return redirect("dashboard_admin_analisis")
+        elif not sucursal_param:
+            if len(sucursales) == 1:
+                sucursal_seleccionada = sucursales[0]
+                sucursal_param = str(sucursal_seleccionada.id)
+            elif mostrar_opcion_todas:
+                sucursal_param = "todas"
+    else:
+        sucursal_seleccionada = getattr(usuario, "sucursal", None)
+        if sucursal_seleccionada is not None:
+            sucursal_param = str(sucursal_seleccionada.id)
+
+    citas_base = _filtrar_por_sucursal(
+        Cita.objects.select_related(
+            "paciente",
+            "paciente__propietario__user",
+            "veterinario",
+            "sucursal",
+        ).order_by("-fecha_hora", "-fecha_solicitada"),
+        usuario,
+    )
+    if sucursal_seleccionada is not None:
+        citas_base = citas_base.filter(sucursal=sucursal_seleccionada)
+
+    total_citas = citas_base.count()
+    total_pendientes = citas_base.filter(estado="pendiente").count()
+    total_programadas = citas_base.filter(estado="programada").count()
+    total_atendidas = citas_base.filter(estado="atendida").count()
+    total_canceladas = citas_base.filter(estado="cancelada").count()
+
+    farmacos_qs = _filtrar_por_sucursal(
+        Farmaco.objects.select_related("sucursal"),
+        usuario,
+    )
+    if sucursal_seleccionada is not None:
+        farmacos_qs = farmacos_qs.filter(sucursal=sucursal_seleccionada)
+
+    total_farmacos_catalogados = farmacos_qs.count()
+    total_stock = farmacos_qs.aggregate(total=Sum("stock")).get("total") or 0
+    stock_critico = farmacos_qs.filter(stock__lte=5).count()
+
+    farmacos_utilizados_qs = _filtrar_por_sucursal(
+        CitaFarmaco.objects.select_related(
+            "cita__paciente__propietario__user",
+            "cita__veterinario",
+            "cita__sucursal",
+            "farmaco",
+        ),
+        usuario,
+        field_name="cita__sucursal",
+    )
+    if sucursal_seleccionada is not None:
+        farmacos_utilizados_qs = farmacos_utilizados_qs.filter(
+            cita__sucursal=sucursal_seleccionada
+        )
+
+    total_farmacos_utilizados = (
+        farmacos_utilizados_qs.aggregate(total=Sum("cantidad")).get("total") or 0
+    )
+
+    categoria_labels = []
+    categoria_data = []
+    categoria_lookup = dict(Farmaco.Categoria.choices)
+    for registro in (
+        farmacos_utilizados_qs.values("farmaco__categoria")
+        .annotate(total=Sum("cantidad"))
+        .order_by("-total")
+    ):
+        categoria = registro["farmaco__categoria"]
+        etiqueta = categoria_lookup.get(categoria, categoria or "Sin categoría")
+        categoria_labels.append(etiqueta)
+        categoria_data.append(registro["total"])
+
+    top_farmacos = []
+    for registro in (
+        farmacos_utilizados_qs.values(
+            "farmaco__id",
+            "farmaco__nombre",
+            "farmaco__categoria",
+            "farmaco__sucursal__nombre",
+        )
+        .annotate(
+            total=Sum("cantidad"),
+            pacientes=Count("cita__paciente", distinct=True),
+        )
+        .order_by("-total")[:8]
+    ):
+        categoria = registro["farmaco__categoria"]
+        top_farmacos.append(
+            {
+                "nombre": registro["farmaco__nombre"],
+                "categoria": categoria_lookup.get(
+                    categoria, categoria or "Sin categoría"
+                ),
+                "total": registro["total"],
+                "pacientes": registro["pacientes"],
+                "sucursal": registro["farmaco__sucursal__nombre"],
+            }
+        )
+
+    hoy = timezone.localdate()
+    inicio_semana = hoy - timedelta(days=hoy.weekday())
+    serie_semanal = []
+    for i in range(5, -1, -1):
+        inicio_periodo = inicio_semana - timedelta(weeks=i)
+        fin_periodo = inicio_periodo + timedelta(days=6)
+        serie_semanal.append(
+            {
+                "inicio": inicio_periodo,
+                "fin": fin_periodo,
+                "label": f"{inicio_periodo:%d/%m} - {fin_periodo:%d/%m}",
+                "pendiente": 0,
+                "programada": 0,
+                "atendida": 0,
+                "cancelada": 0,
+            }
+        )
+
+    semana_lookup = {item["inicio"]: item for item in serie_semanal}
+    fecha_limite = serie_semanal[0]["inicio"] if serie_semanal else hoy
+    for registro in (
+        citas_base.filter(fecha_solicitada__gte=fecha_limite)
+        .values("fecha_solicitada", "estado")
+        .iterator()
+    ):
+        fecha = registro["fecha_solicitada"]
+        if isinstance(fecha, datetime):
+            fecha = fecha.date()
+        inicio_periodo = fecha - timedelta(days=fecha.weekday())
+        bucket = semana_lookup.get(inicio_periodo)
+        if bucket and registro["estado"] in bucket:
+            bucket[registro["estado"]] += 1
+
+    grafico_labels = [item["label"] for item in serie_semanal]
+    grafico_pendientes = [item["pendiente"] for item in serie_semanal]
+    grafico_programadas = [item["programada"] for item in serie_semanal]
+    grafico_atendidas = [item["atendida"] for item in serie_semanal]
+    grafico_canceladas = [item["cancelada"] for item in serie_semanal]
+
+    propietarios_qs = (
+        Propietario.objects.select_related("user")
+        .order_by("user__first_name", "user__last_name", "user__username")
+    )
+    if sucursal_seleccionada is not None:
+        propietarios_qs = propietarios_qs.filter(
+            paciente__cita__sucursal=sucursal_seleccionada
+        ).distinct()
+    elif not usuario.is_superuser and getattr(usuario, "sucursal_id", None):
+        propietarios_qs = propietarios_qs.filter(
+            paciente__cita__sucursal_id=usuario.sucursal_id
+        ).distinct()
+
+    total_propietarios = propietarios_qs.count()
+    propietarios_para_descarga = list(propietarios_qs[:25])
+
+    citas_semana = citas_base.filter(
+        fecha_solicitada__gte=hoy - timedelta(days=6)
+    ).count()
+    citas_mes = citas_base.filter(
+        fecha_solicitada__gte=hoy - timedelta(days=29)
+    ).count()
+
+    veterinarios_qs = _filtrar_por_sucursal(
+        User.objects.filter(rol="VET", activo=True, is_active=True),
+        usuario,
+    )
+    if sucursal_seleccionada is not None:
+        veterinarios_qs = veterinarios_qs.filter(sucursal=sucursal_seleccionada)
+    total_veterinarios = veterinarios_qs.count()
+
+    promedios = {
+        "citas_por_veterinario": round(total_atendidas / total_veterinarios, 1)
+        if total_veterinarios
+        else 0,
+        "farmacos_por_cita": round(
+            total_farmacos_utilizados / total_atendidas, 2
+        )
+        if total_atendidas
+        else 0,
+        "citas_semana": citas_semana,
+        "citas_mes": citas_mes,
+        "veterinarios_activos": total_veterinarios,
+        "propietarios_activos": total_propietarios,
+    }
+
+    rendimiento_veterinarios = []
+    for registro in (
+        citas_base.filter(estado="atendida", veterinario__isnull=False)
+        .values(
+            "veterinario__id",
+            "veterinario__first_name",
+            "veterinario__last_name",
+            "veterinario__username",
+            "veterinario__sucursal__nombre",
+        )
+        .annotate(
+            total=Count("id"),
+            pacientes=Count("paciente", distinct=True),
+            farmacos=Sum("administraciones_farmacos__cantidad"),
+        )
+        .order_by("-total")[:6]
+    ):
+        nombre = registro["veterinario__first_name"] or ""
+        apellido = registro["veterinario__last_name"] or ""
+        username = registro["veterinario__username"] or ""
+        nombre_visible = (f"{nombre} {apellido}" or username).strip()
+        if not nombre_visible:
+            nombre_visible = username
+        rendimiento_veterinarios.append(
+            {
+                "nombre": nombre_visible,
+                "sucursal": registro["veterinario__sucursal__nombre"],
+                "total": registro["total"],
+                "pacientes": registro["pacientes"],
+                "farmacos": registro["farmacos"] or 0,
+            }
+        )
+
+    tasa_atencion = (
+        round((total_atendidas / total_citas) * 100, 1) if total_citas else 0
+    )
+
+    resumen_general = {
+        "total_citas": total_citas,
+        "pendientes": total_pendientes,
+        "programadas": total_programadas,
+        "atendidas": total_atendidas,
+        "canceladas": total_canceladas,
+        "tasa_atencion": tasa_atencion,
+        "total_propietarios": total_propietarios,
+        "farmacos_catalogados": total_farmacos_catalogados,
+        "stock_total": total_stock,
+        "stock_critico": stock_critico,
+        "farmacos_utilizados": total_farmacos_utilizados,
+    }
+
+    categorias_destacadas = [
+        {"nombre": categoria_labels[idx], "total": categoria_data[idx]}
+        for idx in range(len(categoria_labels))
+    ][:6]
+
+    momento_actual = timezone.localtime(timezone.now())
+
+    if sucursal_seleccionada is not None:
+        export_sucursal_param = str(sucursal_seleccionada.id)
+    elif usuario.is_superuser and (sucursal_param == "todas" or not sucursal_param):
+        export_sucursal_param = "todas"
+    else:
+        export_sucursal_param = ""
+
+    context = {
+        "sucursales": sucursales,
+        "sucursal_seleccionada": sucursal_seleccionada,
+        "sucursal_param": sucursal_param,
+        "mostrar_opcion_todas": mostrar_opcion_todas,
+        "resumen_general": resumen_general,
+        "promedios": promedios,
+        "top_farmacos": top_farmacos,
+        "categorias_destacadas": categorias_destacadas,
+        "propietarios_para_descarga": propietarios_para_descarga,
+        "propietarios_total": total_propietarios,
+        "rendimiento_veterinarios": rendimiento_veterinarios,
+        "momento_actual": momento_actual,
+        "grafico_citas_labels": json.dumps(grafico_labels),
+        "grafico_citas_pendientes": json.dumps(grafico_pendientes),
+        "grafico_citas_programadas": json.dumps(grafico_programadas),
+        "grafico_citas_atendidas": json.dumps(grafico_atendidas),
+        "grafico_citas_canceladas": json.dumps(grafico_canceladas),
+        "grafico_categorias_labels": json.dumps(categoria_labels),
+        "grafico_categorias_data": json.dumps(categoria_data),
+        "export_sucursal_param": export_sucursal_param,
+    }
+
+    return render(request, "core/dashboard_admin_analisis.html", context)
+
+
+# ----------------------------
+# Descargas de reportes
+# ----------------------------
+
+
+@login_required
+def exportar_inventario_excel(request):
+    usuario = request.user
+    if not (usuario.is_superuser or usuario.rol == "ADMIN"):
+        messages.error(
+            request,
+            "Solo los administradores pueden descargar los reportes del inventario farmacológico.",
+        )
+        return redirect("dashboard")
+
+    periodo = (request.GET.get("periodo") or "semanal").lower()
+    periodos_validos = {"semanal": 7, "mensual": 30}
+    if periodo not in periodos_validos:
+        periodo = "semanal"
+
+    dias_intervalo = periodos_validos[periodo]
+    inicio = timezone.now() - timedelta(days=dias_intervalo)
+    periodo_label = {
+        "semanal": "Últimos 7 días",
+        "mensual": "Últimos 30 días",
+    }[periodo]
+
+    sucursal_param = request.GET.get("sucursal", "")
+    sucursales_qs = _sucursales_para_usuario(usuario)
+    sucursal_filtro = None
+    sucursal_nombre = "Todas las sucursales"
+
+    if sucursal_param and sucursal_param != "todas":
+        if not sucursal_param.isdigit():
+            messages.error(request, "La sucursal indicada no es válida.")
+            return redirect("dashboard_admin_analisis")
+        sucursal_id = int(sucursal_param)
+        if not sucursales_qs.filter(id=sucursal_id).exists():
+            messages.error(request, "No tienes permisos sobre la sucursal seleccionada.")
+            return redirect("dashboard_admin_analisis")
+        sucursal_filtro = sucursal_id
+        sucursal_nombre = (
+            Sucursal.objects.filter(id=sucursal_id).values_list("nombre", flat=True).first()
+            or "Sucursal"
+        )
+    elif not usuario.is_superuser:
+        sucursal_filtro = getattr(usuario, "sucursal_id", None)
+        sucursal_nombre = (
+            getattr(usuario.sucursal, "nombre", "Sucursal no asignada")
+        )
+
+    farmacos_qs = _filtrar_por_sucursal(
+        CitaFarmaco.objects.select_related(
+            "cita__paciente__propietario__user",
+            "cita__veterinario",
+            "cita__sucursal",
+            "farmaco",
+        ),
+        usuario,
+        field_name="cita__sucursal",
+    )
+    if sucursal_filtro is not None:
+        farmacos_qs = farmacos_qs.filter(cita__sucursal_id=sucursal_filtro)
+
+    farmacos_qs = farmacos_qs.filter(registrado__gte=inicio)
+
+    total_registros = farmacos_qs.count()
+    unidades_utilizadas = (
+        farmacos_qs.aggregate(total=Sum("cantidad")).get("total") or 0
+    )
+    citas_incluidas = farmacos_qs.values("cita_id").distinct().count()
+    pacientes_incluidos = farmacos_qs.values("cita__paciente_id").distinct().count()
+    veterinarios_involucrados = farmacos_qs.filter(
+        cita__veterinario__isnull=False
+    ).values("cita__veterinario_id").distinct().count()
+
+    categoria_lookup = dict(Farmaco.Categoria.choices)
+    momento_actual = timezone.localtime(timezone.now())
+
+    filas_detalle = []
+    for registro in farmacos_qs.order_by("-cita__fecha_hora", "-registrado"):
+        cita = registro.cita
+        paciente = cita.paciente
+        propietario = paciente.propietario
+        propietario_user = propietario.user
+        veterinario = cita.veterinario
+
+        filas_detalle.append(
+            [
+                cita.sucursal.nombre if cita.sucursal_id else "",
+                cita.fecha_hora or cita.fecha_solicitada,
+                registro.registrado,
+                cita.get_estado_display(),
+                cita.get_tipo_display(),
+                (veterinario.get_full_name() or veterinario.username)
+                if veterinario
+                else "Sin asignar",
+                paciente.nombre,
+                propietario_user.get_full_name() or propietario_user.username,
+                propietario.telefono or propietario_user.telefono,
+                propietario_user.email,
+                registro.farmaco.nombre,
+                categoria_lookup.get(
+                    registro.farmaco.categoria, registro.farmaco.categoria
+                ),
+                registro.cantidad,
+                registro.farmaco.stock,
+                cita.notas,
+            ]
+        )
+
+    resumen_contexto = {
+        "title": "Contexto del informe",
+        "headers": ["Indicador", "Valor"],
+        "rows": [
+            ["Generado", momento_actual],
+            ["Periodo", periodo_label],
+            ["Sucursal", sucursal_nombre],
+            ["Registros analizados", total_registros],
+            ["Unidades dispensadas", unidades_utilizadas],
+            ["Citas impactadas", citas_incluidas],
+            ["Pacientes únicos", pacientes_incluidos],
+            ["Veterinarios involucrados", veterinarios_involucrados],
+        ],
+    }
+
+    seccion_detalle = {
+        "title": "Dispensación detallada por cita",
+        "headers": [
+            "Sucursal",
+            "Fecha de la cita",
+            "Registro",
+            "Estado",
+            "Tipo",
+            "Veterinario",
+            "Paciente",
+            "Propietario",
+            "Teléfono",
+            "Email",
+            "Fármaco",
+            "Categoría",
+            "Cantidad",
+            "Stock actual",
+            "Notas de la cita",
+        ],
+        "rows": filas_detalle,
+    }
+
+    filas_categorias = []
+    for registro in (
+        farmacos_qs.values("farmaco__categoria")
+        .annotate(unidades=Sum("cantidad"), items=Count("farmaco", distinct=True))
+        .order_by("-unidades")
+    ):
+        etiqueta = categoria_lookup.get(
+            registro["farmaco__categoria"], registro["farmaco__categoria"]
+        )
+        filas_categorias.append(
+            [
+                etiqueta,
+                registro["items"],
+                registro["unidades"],
+            ]
+        )
+
+    seccion_categorias = {
+        "title": "Resumen por categoría terapéutica",
+        "headers": ["Categoría", "Referencias", "Unidades dispensadas"],
+        "rows": filas_categorias,
+    }
+
+    filas_farmacos = []
+    for registro in (
+        farmacos_qs.values("farmaco__nombre", "farmaco__categoria")
+        .annotate(
+            unidades=Sum("cantidad"),
+            citas=Count("cita", distinct=True),
+            pacientes=Count("cita__paciente", distinct=True),
+            stock=Max("farmaco__stock"),
+        )
+        .order_by("-unidades")
+    ):
+        filas_farmacos.append(
+            [
+                registro["farmaco__nombre"],
+                categoria_lookup.get(
+                    registro["farmaco__categoria"], registro["farmaco__categoria"]
+                ),
+                registro["unidades"],
+                registro["citas"],
+                registro["pacientes"],
+                registro["stock"],
+            ]
+        )
+
+    seccion_farmacos = {
+        "title": "Principales fármacos dispensados",
+        "headers": [
+            "Fármaco",
+            "Categoría",
+            "Unidades",
+            "Citas",
+            "Pacientes",
+            "Stock actual",
+        ],
+        "rows": filas_farmacos,
+    }
+
+    filename = f"reporte_inventario_{periodo}_{momento_actual:%Y%m%d%H%M}.xls"
+    return _excel_sections_response(
+        filename,
+        [resumen_contexto, seccion_detalle, seccion_categorias, seccion_farmacos],
+    )
+
+
+@login_required
+def exportar_propietario_excel(request, propietario_id):
+    usuario = request.user
+    if not (usuario.is_superuser or usuario.rol == "ADMIN"):
+        messages.error(
+            request,
+            "Solo los administradores pueden descargar expedientes completos de propietarios.",
+        )
+        return redirect("dashboard")
+
+    propietario = get_object_or_404(
+        Propietario.objects.select_related("user"), id=propietario_id
+    )
+
+    sucursal_param = request.GET.get("sucursal", "")
+    sucursal_filtro = None
+    sucursal_nombre = "Todas las sucursales"
+
+    if usuario.is_superuser:
+        if sucursal_param and sucursal_param not in {"", "todas"}:
+            if not sucursal_param.isdigit():
+                messages.error(request, "La sucursal indicada no es válida.")
+                return redirect("dashboard_admin_analisis")
+            sucursal_id = int(sucursal_param)
+            sucursal = Sucursal.objects.filter(id=sucursal_id).first()
+            if sucursal is None:
+                messages.error(request, "La sucursal seleccionada no existe.")
+                return redirect("dashboard_admin_analisis")
+            sucursal_filtro = sucursal.id
+            sucursal_nombre = sucursal.nombre
+    else:
+        sucursal_filtro = getattr(usuario, "sucursal_id", None)
+        sucursal_nombre = (
+            getattr(usuario.sucursal, "nombre", "Sucursal no asignada")
+        )
+        if sucursal_param and sucursal_param not in {str(sucursal_filtro), ""}:
+            messages.error(request, "No puedes consultar expedientes de otras sucursales.")
+            return redirect("dashboard_admin_analisis")
+
+    citas_qs = Cita.objects.filter(paciente__propietario=propietario).select_related(
+        "paciente",
+        "paciente__propietario",
+        "paciente__propietario__user",
+        "veterinario",
+        "sucursal",
+        "historial_medico",
+    )
+    if sucursal_filtro is not None:
+        citas_qs = citas_qs.filter(sucursal_id=sucursal_filtro)
+
+    if not usuario.is_superuser and getattr(usuario, "sucursal_id", None):
+        if not citas_qs.exists():
+            messages.error(
+                request,
+                "No se encontraron citas del propietario dentro de tu sucursal.",
+            )
+            return redirect("dashboard_admin_analisis")
+
+    pacientes_qs = Paciente.objects.filter(propietario=propietario)
+    if sucursal_filtro is not None:
+        pacientes_qs = pacientes_qs.filter(cita__sucursal_id=sucursal_filtro).distinct()
+
+    historiales_qs = HistorialMedico.objects.filter(
+        paciente__propietario=propietario
+    ).select_related("paciente", "veterinario")
+    if sucursal_filtro is not None:
+        historiales_qs = historiales_qs.filter(
+            Q(cita__sucursal_id=sucursal_filtro)
+            | Q(
+                cita__isnull=True,
+                paciente__cita__sucursal_id=sucursal_filtro,
+            )
+        ).distinct()
+
+    farmacos_qs = CitaFarmaco.objects.filter(
+        cita__paciente__propietario=propietario
+    ).select_related("farmaco", "cita", "cita__sucursal")
+    if sucursal_filtro is not None:
+        farmacos_qs = farmacos_qs.filter(cita__sucursal_id=sucursal_filtro)
+
+    categoria_lookup = dict(Farmaco.Categoria.choices)
+    momento_actual = timezone.localtime(timezone.now())
+
+    resumen_propietario = {
+        "title": "Ficha del propietario",
+        "headers": ["Campo", "Detalle"],
+        "rows": [
+            [
+                "Propietario",
+                propietario.user.get_full_name() or propietario.user.username,
+            ],
+            ["Correo electrónico", propietario.user.email],
+            [
+                "Teléfono",
+                propietario.telefono or propietario.user.telefono or "Sin informar",
+            ],
+            ["Dirección", propietario.direccion or "Sin registrar"],
+            ["Ciudad", propietario.ciudad or "Sin registrar"],
+            ["Sucursal", sucursal_nombre],
+            ["Expediente generado", momento_actual],
+        ],
+    }
+
+    filas_mascotas = []
+    for mascota in pacientes_qs.order_by("nombre"):
+        filas_mascotas.append(
+            [
+                mascota.nombre,
+                mascota.especie,
+                mascota.raza or "-",
+                mascota.sexo,
+                mascota.fecha_nacimiento,
+                mascota.vacunas or "Sin registros",
+                mascota.alergias or "Sin registros",
+            ]
+        )
+
+    seccion_mascotas = {
+        "title": "Mascotas registradas",
+        "headers": [
+            "Nombre",
+            "Especie",
+            "Raza",
+            "Sexo",
+            "Fecha de nacimiento",
+            "Vacunas",
+            "Alergias",
+        ],
+        "rows": filas_mascotas,
+    }
+
+    farmacos_por_cita = defaultdict(list)
+    for administracion in farmacos_qs:
+        farmacos_por_cita[administracion.cita_id].append(
+            f"{administracion.farmaco.nombre} (x{administracion.cantidad})"
+        )
+
+    citas_list = list(citas_qs.order_by("-fecha_hora", "-fecha_solicitada"))
+    filas_citas = []
+    for cita in citas_list:
+        veterinario = cita.veterinario
+        historial = getattr(cita, "historial_medico", None)
+        farmacos_list = farmacos_por_cita.get(cita.id, [])
+        filas_citas.append(
+            [
+                cita.fecha_hora or cita.fecha_solicitada,
+                cita.get_estado_display(),
+                cita.get_tipo_display(),
+                cita.sucursal.nombre if cita.sucursal_id else "",
+                (veterinario.get_full_name() or veterinario.username)
+                if veterinario
+                else "Sin asignar",
+                cita.paciente.nombre,
+                ", ".join(farmacos_list) if farmacos_list else "Sin registros",
+                historial.diagnostico if historial else "-",
+                historial.tratamiento if historial else "-",
+            ]
+        )
+
+    seccion_citas = {
+        "title": "Citas y atenciones",
+        "headers": [
+            "Fecha",
+            "Estado",
+            "Tipo",
+            "Sucursal",
+            "Veterinario",
+            "Paciente",
+            "Fármacos utilizados",
+            "Diagnóstico",
+            "Tratamiento",
+        ],
+        "rows": filas_citas,
+    }
+
+    filas_historial = []
+    for historial in historiales_qs.order_by("-fecha"):
+        veterinario = historial.veterinario
+        filas_historial.append(
+            [
+                historial.fecha,
+                historial.paciente.nombre,
+                (veterinario.get_full_name() or veterinario.username)
+                if veterinario
+                else "Sin asignar",
+                historial.diagnostico,
+                historial.tratamiento,
+                historial.notas or "-",
+            ]
+        )
+
+    seccion_historial = {
+        "title": "Historial clínico",
+        "headers": [
+            "Fecha",
+            "Paciente",
+            "Profesional",
+            "Diagnóstico",
+            "Tratamiento",
+            "Notas",
+        ],
+        "rows": filas_historial,
+    }
+
+    filas_farmacos = []
+    for registro in (
+        farmacos_qs.values("farmaco__nombre", "farmaco__categoria")
+        .annotate(
+            unidades=Sum("cantidad"),
+            citas=Count("cita", distinct=True),
+        )
+        .order_by("-unidades")
+    ):
+        filas_farmacos.append(
+            [
+                registro["farmaco__nombre"],
+                categoria_lookup.get(
+                    registro["farmaco__categoria"], registro["farmaco__categoria"]
+                ),
+                registro["unidades"],
+                registro["citas"],
+            ]
+        )
+
+    seccion_farmacos = {
+        "title": "Fármacos administrados al propietario",
+        "headers": ["Fármaco", "Categoría", "Unidades", "Citas"],
+        "rows": filas_farmacos,
+    }
+
+    owner_slug = (propietario.user.username or "propietario").replace(" ", "_")
+    filename = f"expediente_{owner_slug}_{momento_actual:%Y%m%d%H%M}.xls"
+
+    secciones = [
+        resumen_propietario,
+        seccion_mascotas,
+        seccion_citas,
+        seccion_historial,
+        seccion_farmacos,
+    ]
+
+    return _excel_sections_response(filename, secciones)
+
+
+# ----------------------------
+# Mascotas y propietarios
 # ----------------------------
 # Mascotas y propietarios
 # ----------------------------

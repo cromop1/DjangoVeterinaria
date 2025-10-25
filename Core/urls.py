@@ -43,6 +43,21 @@ urlpatterns = [
         views.inventario_farmacos_admin,
         name='inventario_farmacos_admin',
     ),
+    path(
+        'administrador/analisis/',
+        views.dashboard_admin_analisis,
+        name='dashboard_admin_analisis',
+    ),
+    path(
+        'administrador/analisis/inventario/exportar/',
+        views.exportar_inventario_excel,
+        name='exportar_inventario_excel',
+    ),
+    path(
+        'administrador/analisis/propietario/<int:propietario_id>/exportar/',
+        views.exportar_propietario_excel,
+        name='exportar_propietario_excel',
+    ),
 
     # ----------------------------
     # CITAS
