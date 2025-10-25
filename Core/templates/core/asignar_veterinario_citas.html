@@ -13,6 +13,7 @@
                     <div class="flex-grow-1">
                         <h5 class="fw-semibold mb-1">{{ cita.paciente.nombre }} ({{ cita.paciente.especie }})</h5>
                         <p class="mb-1">Propietario: {{ cita.paciente.propietario.user.get_full_name }}</p>
+                        <p class="mb-1"><span class="badge text-bg-primary">{{ cita.sucursal.nombre }}</span></p>
                         <p class="mb-1">Día solicitado: {{ cita.fecha_solicitada|date:"d/m/Y" }}</p>
                         <p class="mb-1">Horario confirmado: {% if cita.fecha_hora %}{{ cita.fecha_hora|date:"H:i" }} hs{% else %}<span class="badge text-bg-warning">Sin confirmar</span>{% endif %}</p>
                         <p class="mb-1">Notas: {{ cita.notas|default:"-" }}</p>

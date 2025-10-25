@@ -16,6 +16,7 @@
             <span class="badge text-bg-warning">Horario sin confirmar</span>
         {% endif %}
         (estado: {{ cita.get_estado_display }})
+        · <span class="badge text-bg-primary">{{ cita.sucursal.nombre }}</span>
     </p>
 
     {% with telefono=cita.telefono_contacto %}

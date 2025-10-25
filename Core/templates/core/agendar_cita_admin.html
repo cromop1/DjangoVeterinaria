@@ -17,11 +17,35 @@
             </select>
         </div>
 
+        {% if es_superadmin %}
+            <div class="mb-3">
+                <label>Sucursal:</label>
+                <select name="sucursal" class="form-select" required>
+                    <option value="" disabled {% if not sucursal_seleccionada %}selected{% endif %}>Seleccioná una sucursal</option>
+                    {% for sucursal in sucursales %}
+                        <option value="{{ sucursal.id }}" {% if sucursal_seleccionada and sucursal_seleccionada.id == sucursal.id %}selected{% endif %}>
+                            {{ sucursal.nombre }} · {{ sucursal.direccion }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        {% else %}
+            {% if sucursal_seleccionada %}
+                <input type="hidden" name="sucursal" value="{{ sucursal_seleccionada.id }}">
+                <p class="mb-3"><span class="badge text-bg-primary">Sucursal: {{ sucursal_seleccionada.nombre }}</span></p>
+            {% endif %}
+        {% endif %}
+
         <div class="mb-3">
             <label>Veterinario:</label>
             <select name="veterinario" class="form-select" required>
                 {% for v in veterinarios %}
-                    <option value="{{ v.id }}">{{ v.get_full_name }}</option>
+                    <option value="{{ v.id }}">
+                        {{ v.get_full_name|default:v.username }}
+                        {% if es_superadmin %}
+                            · {{ v.sucursal.nombre }}
+                        {% endif %}
+                    </option>
                 {% endfor %}
             </select>
         </div>

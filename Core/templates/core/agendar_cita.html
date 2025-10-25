@@ -112,6 +112,18 @@
                 </select>
             </div>
 
+            <div>
+                <label for="sucursal">Sucursal</label>
+                <select name="sucursal" id="sucursal" required>
+                    <option value="" disabled {% if not sucursal_seleccionada %}selected{% endif %}>Selecciona una sucursal</option>
+                    {% for sucursal in sucursales %}
+                        <option value="{{ sucursal.id }}" {% if sucursal_seleccionada and sucursal_seleccionada.id == sucursal.id %}selected{% endif %}>
+                            {{ sucursal.nombre }} · {{ sucursal.direccion }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
             <div class="rounded-md bg-indigo-50 border border-indigo-200 p-3 text-sm text-indigo-700">
                 Elige el día que prefieras y nuestro equipo administrativo se comunicará contigo por WhatsApp para definir el horario.
             </div>

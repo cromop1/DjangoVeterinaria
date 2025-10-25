@@ -5,6 +5,22 @@ from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils import timezone
 
+
+# ----------------------------
+# Sucursal
+# ----------------------------
+class Sucursal(models.Model):
+    nombre = models.CharField(max_length=150, unique=True)
+    direccion = models.CharField(max_length=255)
+    ciudad = models.CharField(max_length=120, blank=True)
+    telefono = models.CharField(max_length=30, blank=True)
+
+    class Meta:
+        ordering = ["nombre"]
+
+    def __str__(self):
+        return self.nombre
+
 # ----------------------------
 # Usuario con rol propio
 # ----------------------------
@@ -21,6 +37,13 @@ class User(AbstractUser):
     activo = models.BooleanField(default=True)
     avatar = models.ImageField(upload_to="avatars/", blank=True, null=True)
     especialidad = models.CharField(max_length=100, blank=True)  # para veterinarios
+    sucursal = models.ForeignKey(
+        Sucursal,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="usuarios",
+    )
 
     def __str__(self):
         return f"{self.username} ({self.get_rol_display()})"
@@ -78,6 +101,11 @@ class Cita(models.Model):
         null=True,
         blank=True,
     )
+    sucursal = models.ForeignKey(
+        Sucursal,
+        on_delete=models.PROTECT,
+        related_name="citas",
+    )
     fecha_solicitada = models.DateField(default=timezone.now)
     fecha_hora = models.DateTimeField(blank=True, null=True)
     duracion = models.IntegerField(default=30)  # duración en minutos
@@ -89,6 +117,7 @@ class Cita(models.Model):
         veterinario_nombre = (
             self.veterinario.username if self.veterinario else "Sin asignar"
         )
+        sucursal_nombre = self.sucursal.nombre if self.sucursal_id else "Sin sucursal"
         if self.fecha_hora:
             fecha_local = self.fecha_hora
             if timezone.is_aware(self.fecha_hora):
@@ -97,8 +126,8 @@ class Cita(models.Model):
         else:
             fecha_texto = f"{self.fecha_solicitada.strftime('%d/%m/%Y')} (sin horario)"
         return (
-            f"Cita: {self.paciente.nombre} ({self.get_estado_display()}) con {veterinario_nombre} - "
-            f"{fecha_texto}"
+            f"Cita: {self.paciente.nombre} ({self.get_estado_display()}) en {sucursal_nombre} "
+            f"con {veterinario_nombre} - {fecha_texto}"
         )
 
     def telefono_contacto(self) -> str:

@@ -25,6 +25,22 @@
                     {% endfor %}
                 </select>
             </div>
+            {% if es_superadmin %}
+                <div class="mb-3">
+                    <label for="sucursal" class="form-label">Asignar a sucursal:</label>
+                    <select name="sucursal" id="sucursal" class="form-select" required>
+                        <option value="" disabled selected>Seleccioná una sucursal</option>
+                        {% for sucursal in sucursales %}
+                            <option value="{{ sucursal.id }}">{{ sucursal.nombre }} · {{ sucursal.direccion }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            {% else %}
+                {% if sucursales and sucursales.0 %}
+                    <input type="hidden" name="sucursal" value="{{ sucursales.0.id }}">
+                    <p class="mb-3"><span class="badge text-bg-primary">Sucursal actual: {{ sucursales.0.nombre }}</span></p>
+                {% endif %}
+            {% endif %}
             <button type="submit" class="btn btn-success">Asignar como Veterinario</button>
         </form>
     {% else %}
