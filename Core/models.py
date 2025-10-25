@@ -14,6 +14,7 @@ class Sucursal(models.Model):
     direccion = models.CharField(max_length=255)
     ciudad = models.CharField(max_length=120, blank=True)
     telefono = models.CharField(max_length=30, blank=True)
+    imagen = models.ImageField(upload_to="sucursales/", blank=True, null=True)
 
     class Meta:
         ordering = ["nombre"]

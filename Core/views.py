@@ -56,6 +56,10 @@ def _normalizar_especie_mascota(especie: str) -> str:
     return ""
 
 
+def _solo_digitos_telefono(telefono: str) -> str:
+    return "".join(ch for ch in (telefono or "") if ch.isdigit())
+
+
 def _roles_con_sucursal():
     return {"ADMIN", "ADMIN_OP", "VET"}
 
@@ -151,17 +155,53 @@ def landing(request):
 def contacto(request):
     """Página de contacto institucional de la veterinaria."""
 
+    sucursales = Sucursal.objects.all()
+    sucursal_principal = sucursales.first()
+
+    telefono_base = "+54 351 530-1903"
+    telefono_principal = telefono_base
+    direccion_principal = "Juan Perrin 6089, Córdoba, Argentina"
+    if sucursal_principal:
+        direccion_principal = sucursal_principal.direccion
+        if sucursal_principal.ciudad:
+            direccion_principal = f"{direccion_principal}, {sucursal_principal.ciudad}"
+        if sucursal_principal.telefono:
+            telefono_principal = sucursal_principal.telefono
+
+    telefono_normalizado = _solo_digitos_telefono(telefono_principal) or "543515301903"
+
+    sucursales_info = []
+    for sucursal in sucursales:
+        telefono_sucursal = sucursal.telefono or ""
+        telefono_sucursal_normalizado = _solo_digitos_telefono(telefono_sucursal)
+        sucursales_info.append(
+            {
+                "sucursal": sucursal,
+                "telefono_link": (
+                    f"tel:+{telefono_sucursal_normalizado}"
+                    if telefono_sucursal_normalizado
+                    else ""
+                ),
+                "whatsapp_url": (
+                    f"https://wa.me/{telefono_sucursal_normalizado}"
+                    if telefono_sucursal_normalizado
+                    else ""
+                ),
+            }
+        )
+
     context = {
         "titulo_pagina": "Contacto",
-        "direccion": "Juan Perrin 6089, Córdoba, Argentina",
-        "telefono": "+54 351 530-1903",
-        "telefono_link": "tel:+543515301903",
+        "direccion": direccion_principal,
+        "telefono": telefono_principal,
+        "telefono_link": f"tel:+{telefono_normalizado}",
         "email": "contacto@sabuesofeliz.com",
         "horarios": {
             "Lunes a Viernes": "08:00 a 20:00",
             "Sábados": "09:00 a 14:00",
         },
-        "whatsapp_url": "https://wa.me/543515301903",
+        "whatsapp_url": f"https://wa.me/{telefono_normalizado}",
+        "sucursales_info": sucursales_info,
     }
 
     return render(request, "core/contacto.html", context)
@@ -1913,7 +1953,9 @@ def dashboard_veterinarios(request):
         return redirect("dashboard")
 
     veterinarios = _filtrar_por_sucursal(
-        User.objects.filter(rol="VET").order_by("first_name", "last_name"),
+        User.objects.filter(rol="VET")
+        .select_related("sucursal")
+        .order_by("first_name", "last_name"),
         request.user,
     )
 
@@ -2049,6 +2091,8 @@ def dashboard_veterinarios(request):
                 "tasa_atencion": tasa_atencion,
                 "iniciales": iniciales,
                 "nombre_completo": nombre_completo,
+                "sucursal": vet.sucursal,
+                "sucursal_nombre": vet.sucursal.nombre if vet.sucursal else "",
             }
         )
 

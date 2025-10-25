@@ -51,6 +51,7 @@ class UserAdmin(admin.ModelAdmin):
 class SucursalAdmin(admin.ModelAdmin):
     list_display = ("nombre", "direccion", "ciudad", "telefono")
     search_fields = ("nombre", "direccion", "ciudad")
+    fields = ("nombre", "direccion", "ciudad", "telefono", "imagen")
 
 # ----------------------------
 # Admin de Propietario
