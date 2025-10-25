@@ -1,0 +1,203 @@
+{% extends "core/base.html" %}
+
+{% block title %}Calendario de Vacunas{% endblock %}
+
+{% block content %}
+<div class="row gy-4 align-items-center mb-5">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm bg-gradient" style="background: linear-gradient(135deg, #5b86e5 0%, #36d1dc 100%);">
+            <div class="card-body text-white p-4 p-lg-5">
+                <span class="badge bg-white text-primary fw-semibold mb-3">Salud preventiva</span>
+                <h1 class="h2 fw-bold mb-3">Calendario inteligente de vacunas</h1>
+                <p class="mb-4">Centralizá el esquema de vacunación de tus compañeros felinos y caninos. Registrá cada dosis, añadí observaciones y seguí el progreso recomendado por la clínica.</p>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{% url 'registrar_mascota' %}" class="btn btn-light btn-lg px-4">
+                        <i class="bi bi-plus-circle me-2"></i>Registrar nueva mascota
+                    </a>
+                    <a href="{% url 'mis_mascotas' %}" class="btn btn-outline-light btn-lg px-4">
+                        <i class="bi bi-journal-medical me-2"></i>Ver historial clínico
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-4">
+                <h2 class="h5 fw-semibold mb-3">Cómo funciona</h2>
+                <ul class="list-unstyled text-muted mb-0 small">
+                    <li class="d-flex mb-3">
+                        <i class="bi bi-1-circle text-primary fs-4 me-3"></i>
+                        <span>Seleccioná la mascota para ver el calendario recomendado según su especie.</span>
+                    </li>
+                    <li class="d-flex mb-3">
+                        <i class="bi bi-2-circle text-primary fs-4 me-3"></i>
+                        <span>Marcá cada vacuna cuando la apliques, indicando fecha y observaciones clave.</span>
+                    </li>
+                    <li class="d-flex">
+                        <i class="bi bi-3-circle text-primary fs-4 me-3"></i>
+                        <span>Consultá el progreso y planificá los próximos refuerzos con confianza.</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if not mascotas %}
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-5 text-center text-muted">
+            <i class="bi bi-paw display-5 d-block mb-3 text-primary"></i>
+            <h2 class="h4 fw-semibold mb-2">No hay mascotas registradas</h2>
+            <p class="mb-4">Agregá tu primera mascota para habilitar el seguimiento personalizado del plan de vacunas.</p>
+            <a href="{% url 'registrar_mascota' %}" class="btn btn-primary btn-lg">
+                <i class="bi bi-plus-circle me-2"></i>Registrar mascota
+            </a>
+        </div>
+    </div>
+{% else %}
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+                <div>
+                    <h2 class="h4 fw-semibold mb-2">Seleccioná la mascota</h2>
+                    <p class="text-muted mb-0">Mostramos el calendario oficial para caninos y felinos. Actualizá la especie desde el perfil si es necesario.</p>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    {% for mascota in mascotas %}
+                        {% with especie_lower=mascota.especie|default:""|lower %}
+                            <a href="{% url 'calendario_vacunas' %}?paciente={{ mascota.id }}"
+                               class="btn {% if mascota_seleccionada and mascota.id == mascota_seleccionada.id %}btn-primary{% else %}btn-outline-primary{% endif %} rounded-pill px-4">
+                                <i class="bi {% if 'gat' in especie_lower or 'fel' in especie_lower %}bi-emoji-smile{% else %}bi-paw{% endif %} me-2"></i>{{ mascota.nombre }}
+                            </a>
+                        {% endwith %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% if not vacunas_disponibles %}
+    <div class="alert alert-warning shadow-sm">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
+            <div>
+                <h3 class="h6 fw-semibold mb-1">Configuración pendiente</h3>
+                <p class="mb-0">Para activar el calendario de vacunas ejecutá las migraciones de base de datos más recientes (<code>python manage.py migrate</code>). Luego recargá la página.</p>
+            </div>
+        </div>
+    </div>
+{% elif not especie_normalizada %}
+    <div class="alert alert-info shadow-sm">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-info-circle-fill fs-4 me-3"></i>
+            <div>
+                <h3 class="h6 fw-semibold mb-1">Calendario no disponible</h3>
+                <p class="mb-0">La especie de {{ mascota_seleccionada.nombre }} no cuenta con un esquema precargado. Actualizá la especie a Canino o Felino para visualizar recomendaciones.</p>
+            </div>
+        </div>
+    </div>
+{% else %}
+    <div class="row g-4 align-items-stretch mb-4">
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="badge bg-primary-subtle text-primary text-uppercase">Resumen</span>
+                        <span class="text-muted small text-uppercase">{{ especie_normalizada|capfirst }}</span>
+                    </div>
+                    <h3 class="h4 fw-bold mb-2">Progreso general</h3>
+                    <p class="text-muted mb-4">{{ vacunas_completadas }} de {{ total_vacunas }} vacunas registradas.</p>
+                    <div class="progress rounded-pill mb-3" style="height: 12px;">
+                        <div class="progress-bar bg-gradient" role="progressbar" style="width: {{ porcentaje_avance }}%; background: linear-gradient(90deg, #36d1dc 0%, #5b86e5 100%);"></div>
+                    </div>
+                    <div class="d-flex justify-content-between text-muted small">
+                        <span><i class="bi bi-check-circle-fill text-success me-2"></i>Completadas</span>
+                        <span><i class="bi bi-clock-history text-warning me-2"></i>Pendientes: {{ vacunas_pendientes }}</span>
+                    </div>
+                    <hr class="my-4">
+                    <h4 class="h6 fw-semibold text-uppercase text-muted mb-3">Sugerencias rápidas</h4>
+                    <ul class="list-unstyled text-muted small mb-0">
+                        <li class="mb-2"><i class="bi bi-shield-check text-success me-2"></i>Conservá los comprobantes en formato digital.</li>
+                        <li class="mb-2"><i class="bi bi-bell text-primary me-2"></i>Programá recordatorios en tu móvil tras cada refuerzo.</li>
+                        <li><i class="bi bi-heart-pulse text-danger me-2"></i>Consultá al veterinario ante cualquier reacción inesperada.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <h3 class="h4 fw-semibold mb-3">Próximos pasos</h3>
+                    <p class="text-muted small mb-4">Revisá las fechas sugeridas para organizar la agenda de vacunación. Podés actualizar las dosis aplicadas desde la lista detallada.</p>
+                    <div class="timeline position-relative ps-4">
+                        <span class="position-absolute top-0 start-0 bottom-0 bg-primary-subtle" style="width: 3px;"></span>
+                        {% for item in vacunas_info %}
+                            <div class="timeline-item position-relative mb-4">
+                                <span class="position-absolute translate-middle rounded-circle {% if item.registro %}bg-success{% else %}bg-warning{% endif %}" style="left: -9px; width: 16px; height: 16px;"></span>
+                                <div class="card border-0 shadow-sm ms-2">
+                                    <div class="card-body p-4">
+                                        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                                            <div>
+                                                <h4 class="h5 fw-semibold mb-1">{{ item.vacuna.nombre }}</h4>
+                                                <p class="text-muted small mb-0">Edad recomendada: <strong>{{ item.vacuna.edad_legible }}</strong>{% if item.vacuna.refuerzo %} • {{ item.vacuna.refuerzo }}{% endif %}</p>
+                                            </div>
+                                            <span class="badge {% if item.registro %}bg-success-subtle text-success{% else %}bg-warning-subtle text-warning{% endif %} rounded-pill px-3 py-2">
+                                                {% if item.registro %}<i class="bi bi-check-circle-fill me-1"></i>Aplicada{% else %}<i class="bi bi-clock me-1"></i>Pendiente{% endif %}
+                                            </span>
+                                        </div>
+                                        {% if item.vacuna.descripcion %}
+                                            <p class="text-muted small mb-4">{{ item.vacuna.descripcion }}</p>
+                                        {% endif %}
+
+                                        <form method="post" class="row g-3 align-items-end">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="accion" value="marcar">
+                                            <input type="hidden" name="paciente_id" value="{{ mascota_seleccionada.id }}">
+                                            <input type="hidden" name="vacuna_id" value="{{ item.vacuna.id }}">
+                                            <div class="col-md-4">
+                                                <label class="form-label small fw-semibold text-uppercase">Fecha de aplicación</label>
+                                                <input type="date" name="fecha_aplicacion" class="form-control"
+                                                       value="{% if item.registro %}{{ item.registro.fecha_aplicacion|date:'Y-m-d' }}{% else %}{{ hoy|date:'Y-m-d' }}{% endif %}"
+                                                       max="{{ hoy|date:'Y-m-d' }}" required>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label small fw-semibold text-uppercase">Notas</label>
+                                                <textarea name="notas" class="form-control" rows="2" placeholder="Observaciones clínicas opcionales">{% if item.registro %}{{ item.registro.notas }}{% endif %}</textarea>
+                                            </div>
+                                            <div class="col-md-2 d-grid">
+                                                <button type="submit" class="btn {% if item.registro %}btn-success{% else %}btn-primary{% endif %}">
+                                                    {% if item.registro %}<i class="bi bi-save me-1"></i>Actualizar{% else %}<i class="bi bi-check2-circle me-1"></i>Registrar{% endif %}
+                                                </button>
+                                            </div>
+                                        </form>
+
+                                        {% if item.registro %}
+                                            <div class="mt-3 d-flex flex-wrap align-items-center justify-content-between text-muted small">
+                                                <div>
+                                                    <i class="bi bi-calendar-event me-2"></i>Registrada el {{ item.registro.fecha_aplicacion|date:"d/m/Y" }}
+                                                    {% if item.registro.notas %}<span class="ms-2"><i class="bi bi-card-text me-1"></i>{{ item.registro.notas }}</span>{% endif %}
+                                                </div>
+                                                <form method="post" onsubmit="return confirm('¿Eliminar el registro de esta vacuna?');">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="accion" value="desmarcar">
+                                                    <input type="hidden" name="paciente_id" value="{{ mascota_seleccionada.id }}">
+                                                    <input type="hidden" name="vacuna_id" value="{{ item.vacuna.id }}">
+                                                    <button type="submit" class="btn btn-link text-danger p-0"><i class="bi bi-trash me-1"></i>Eliminar registro</button>
+                                                </form>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% empty %}
+                            <div class="alert alert-light border text-muted">No se encontraron vacunas configuradas para esta especie.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endif %}
+{% endif %}
+{% endblock %}

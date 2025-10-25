@@ -1,0 +1,161 @@
+{% with current=request.resolver_match.url_name %}
+<header class="relative overflow-hidden bg-gradient-to-r from-cyan-900 via-cyan-800 to-cyan-600 text-white shadow-xl">
+    <div class="pointer-events-none absolute inset-0 opacity-20">
+        <div class="absolute -left-32 top-0 h-48 w-48 rounded-full bg-cyan-400/60 blur-3xl"></div>
+        <div class="absolute right-0 top-10 h-56 w-56 rounded-full bg-sky-300/50 blur-3xl"></div>
+    </div>
+
+    <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div class="flex flex-col gap-6">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20">
+                        <i class="fas fa-paw text-2xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm uppercase tracking-[0.35em] text-white/70">Veterinaria</p>
+                        <a href="{% url 'landing' %}" class="text-2xl font-bold leading-tight text-white hover:text-cyan-100">
+                            Sabueso Feliz
+                        </a>
+                    </div>
+                </div>
+
+                {% if request.user.is_authenticated %}
+                    <div class="flex flex-col gap-3 text-white lg:items-end">
+                        <div class="flex items-center gap-4 rounded-2xl bg-white/10 px-5 py-4 backdrop-blur">
+                            <div class="text-right">
+                                <p class="text-xs uppercase tracking-wide text-white/80">Bienvenido</p>
+                                <p class="font-semibold">{{ request.user.get_full_name|default:request.user.username }}</p>
+                                <span class="inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">
+                                    <i class="fas fa-id-badge"></i>
+                                    {{ request.user.get_rol_display }}
+                                </span>
+                            </div>
+                            <div class="flex h-12 w-12 items-center justify-center rounded-full bg-white/20">
+                                <i class="fas fa-user text-lg"></i>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap items-center justify-end gap-2">
+                            <a href="{% url 'logout' %}"
+                               class="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold transition hover:bg-white/20">
+                                <i class="fas fa-arrow-right-from-bracket"></i>
+                                Cerrar sesión
+                            </a>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="flex flex-col items-start gap-3 text-white lg:items-end">
+                        <p class="max-w-sm text-sm text-white/80 lg:text-right">
+                            Gestiona tus mascotas, citas y compras desde un panel pensado para tu comodidad.
+                        </p>
+                        <div class="flex flex-wrap gap-2">
+                            <a href="{% url 'login' %}"
+                               class="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-cyan-900 shadow transition hover:bg-cyan-100">
+                                <i class="fas fa-right-to-bracket"></i>
+                                Ingresar
+                            </a>
+                            <a href="{% url 'registro_propietario' %}"
+                               class="inline-flex items-center gap-2 rounded-full border border-white/60 px-4 py-2 text-sm font-semibold transition hover:bg-white/10">
+                                <i class="fas fa-user-plus"></i>
+                                Registrarme
+                            </a>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+
+            <nav class="flex flex-wrap items-center gap-2">
+                <a href="{% url 'landing' %}"
+                   class="rounded-full px-4 py-2 text-sm font-semibold transition-colors {% if current == 'landing' %}bg-white text-cyan-900 shadow{% else %}text-white/85 hover:bg-white/10{% endif %}">
+                    <i class="fas fa-home mr-2"></i>Inicio
+                </a>
+                <a href="{% url 'tienda' %}"
+                   class="rounded-full px-4 py-2 text-sm font-semibold transition-colors {% if current == 'tienda' or current == 'detalle_producto' %}bg-white text-cyan-900 shadow{% else %}text-white/85 hover:bg-white/10{% endif %}">
+                    <i class="fas fa-store mr-2"></i>Tienda
+                </a>
+                <a href="{% url 'contacto' %}"
+                   class="rounded-full px-4 py-2 text-sm font-semibold transition-colors {% if current == 'contacto' %}bg-white text-cyan-900 shadow{% else %}text-white/85 hover:bg-white/10{% endif %}">
+                    <i class="fas fa-envelope-open-text mr-2"></i>Contacto
+                </a>
+
+                {% if request.user.is_authenticated %}
+                    <a href="{% url 'dashboard' %}"
+                       class="rounded-full px-4 py-2 text-sm font-semibold transition-colors {% if current == 'dashboard' %}bg-white text-cyan-900 shadow{% else %}text-white/85 hover:bg-white/10{% endif %}">
+                        <i class="fas fa-chart-line mr-2"></i>Panel
+                    </a>
+
+                    {% if request.user.rol == "ADMIN" or request.user.rol == "ADMIN_OP" %}
+                        <a href="{% url 'listar_usuarios' %}"
+                           class="rounded-full px-4 py-2 text-sm font-semibold transition-colors {% if current == 'listar_usuarios' %}bg-white text-cyan-900 shadow{% else %}text-white/85 hover:bg-white/10{% endif %}">
+                            <i class="fas fa-users mr-2"></i>Usuarios
+                        </a>
+                        <a href="{% url 'listar_pacientes' %}"
+                           class="rounded-full px-4 py-2 text-sm font-semibold transition-colors {% if current == 'listar_pacientes' %}bg-white text-cyan-900 shadow{% else %}text-white/85 hover:bg-white/10{% endif %}">
+                            <i class="fas fa-dog mr-2"></i>Pacientes
+                        </a>
+                        <a href="{% url 'listar_citas_admin' %}"
+                           class="rounded-full px-4 py-2 text-sm font-semibold transition-colors {% if current == 'listar_citas_admin' or current == 'asignar_veterinario_citas' %}bg-white text-cyan-900 shadow{% else %}text-white/85 hover:bg-white/10{% endif %}">
+                            <i class="fas fa-calendar-check mr-2"></i>Citas
+                        </a>
+                    {% endif %}
+
+                    {% if request.user.rol == "ADMIN" %}
+                        <a href="{% url 'dashboard_veterinarios' %}"
+                           class="rounded-full px-4 py-2 text-sm font-semibold transition-colors {% if current == 'dashboard_veterinarios' %}bg-white text-cyan-900 shadow{% else %}text-white/85 hover:bg-white/10{% endif %}">
+                            <i class="fas fa-user-md mr-2"></i>Equipo
+                        </a>
+                        <a href="{% url 'admin_productos_list' %}"
+                           class="rounded-full px-4 py-2 text-sm font-semibold transition-colors {% if current == 'admin_productos_list' %}bg-white text-cyan-900 shadow{% else %}text-white/85 hover:bg-white/10{% endif %}">
+                            <i class="fas fa-box-open mr-2"></i>Inventario
+                        </a>
+                    {% elif request.user.rol == "ADMIN_OP" %}
+                        <a href="{% url 'dashboard_veterinarios' %}"
+                           class="rounded-full px-4 py-2 text-sm font-semibold transition-colors {% if current == 'dashboard_veterinarios' %}bg-white text-cyan-900 shadow{% else %}text-white/85 hover:bg-white/10{% endif %}">
+                            <i class="fas fa-user-md mr-2"></i>Equipo
+                        </a>
+                    {% elif request.user.rol == "VET" %}
+                        <a href="{% url 'mis_citas' %}"
+                           class="rounded-full px-4 py-2 text-sm font-semibold transition-colors {% if current == 'mis_citas' or current == 'detalle_cita' %}bg-white text-cyan-900 shadow{% else %}text-white/85 hover:bg-white/10{% endif %}">
+                            <i class="fas fa-calendar-check mr-2"></i>Mis citas
+                        </a>
+                        <a href="{% url 'historial_medico_vet' %}"
+                           class="rounded-full px-4 py-2 text-sm font-semibold transition-colors {% if current == 'historial_medico_vet' or current == 'detalle_historial' %}bg-white text-cyan-900 shadow{% else %}text-white/85 hover:bg-white/10{% endif %}">
+                            <i class="fas fa-file-medical mr-2"></i>Historiales
+                        </a>
+                        <a href="{% url 'dashboard_veterinarios' %}"
+                           class="rounded-full px-4 py-2 text-sm font-semibold transition-colors {% if current == 'dashboard_veterinarios' or current == 'dashboard_veterinarios_indicadores' %}bg-white text-cyan-900 shadow{% else %}text-white/85 hover:bg-white/10{% endif %}">
+                            <i class="fas fa-chart-pie mr-2"></i>Indicadores
+                        </a>
+                    {% elif request.user.rol == "OWNER" %}
+                        <a href="{% url 'mis_mascotas' %}"
+                           class="rounded-full px-4 py-2 text-sm font-semibold transition-colors {% if current == 'mis_mascotas' or current == 'detalle_mascota' or current == 'detalle_mascota_admin' %}bg-white text-cyan-900 shadow{% else %}text-white/85 hover:bg-white/10{% endif %}">
+                            <i class="fas fa-paw mr-2"></i>Mis mascotas
+                        </a>
+                        <a href="{% url 'calendario_vacunas' %}"
+                           class="rounded-full px-4 py-2 text-sm font-semibold transition-colors {% if current == 'calendario_vacunas' %}bg-white text-cyan-900 shadow{% else %}text-white/85 hover:bg-white/10{% endif %}">
+                            <i class="fas fa-syringe mr-2"></i>Vacunas
+                        </a>
+                        <a href="{% url 'mis_citas' %}"
+                           class="rounded-full px-4 py-2 text-sm font-semibold transition-colors {% if current == 'mis_citas' %}bg-white text-cyan-900 shadow{% else %}text-white/85 hover:bg-white/10{% endif %}">
+                            <i class="fas fa-calendar-alt mr-2"></i>Mis citas
+                        </a>
+                        <a href="{% url 'agendar_cita' %}"
+                           class="rounded-full px-4 py-2 text-sm font-semibold transition-colors {% if current == 'agendar_cita' %}bg-white text-cyan-900 shadow{% else %}text-white/85 hover:bg-white/10{% endif %}">
+                            <i class="fas fa-plus-circle mr-2"></i>Agendar
+                        </a>
+                    {% endif %}
+                {% else %}
+                    <a href="{% url 'login' %}"
+                       class="rounded-full px-4 py-2 text-sm font-semibold transition-colors {% if current == 'login' %}bg-white text-cyan-900 shadow{% else %}text-white/85 hover:bg-white/10{% endif %}">
+                        <i class="fas fa-right-to-bracket mr-2"></i>Ingresar
+                    </a>
+                    <a href="{% url 'registro_propietario' %}"
+                       class="rounded-full px-4 py-2 text-sm font-semibold transition-colors {% if current == 'registro_propietario' %}bg-white text-cyan-900 shadow{% else %}text-white/85 hover:bg-white/10{% endif %}">
+                        <i class="fas fa-user-plus mr-2"></i>Registrarme
+                    </a>
+                {% endif %}
+            </nav>
+        </div>
+    </div>
+</header>
+{% endwith %}

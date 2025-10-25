@@ -1,0 +1,82 @@
+{% extends "core/base.html" %}
+
+{% block title %}Pacientes - Sabueso Feliz{% endblock %}
+
+{% block main_class %}max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.35em] text-gray-400">Pacientes</p>
+            <h2 class="text-2xl font-bold text-gray-900">Listado de mascotas registradas</h2>
+            <p class="mt-2 max-w-2xl text-sm text-gray-600">
+                Accedé a la información clave de cada paciente y navegá rápidamente hacia su historia clínica.
+            </p>
+        </div>
+        <a href="{% url 'crear_mascota_admin' %}" class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-700">
+            <i class="fas fa-paw"></i>
+            Registrar nueva mascota
+        </a>
+    </div>
+
+    <div class="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm">
+        <div class="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+            <div class="flex items-center gap-3">
+                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                    <i class="fas fa-dog"></i>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-gray-900">Pacientes registrados</p>
+                    <p class="text-xs text-gray-500">{{ pacientes|length }} activos</p>
+                </div>
+            </div>
+            <a href="{% url 'dashboard' %}" class="text-xs font-semibold uppercase tracking-wide text-cyan-700 hover:text-cyan-900">
+                Volver al panel
+            </a>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-widest text-gray-500">Nombre</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-widest text-gray-500">Especie</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-widest text-gray-500">Raza</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-widest text-gray-500">Sexo</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-widest text-gray-500">Propietario</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for paciente in pacientes %}
+                        <tr class="hover:bg-emerald-50/40">
+                            <td class="whitespace-nowrap px-6 py-4 font-semibold text-gray-900">{{ paciente.nombre }}</td>
+                            <td class="px-6 py-4 text-gray-600 capitalize">{{ paciente.especie|default:"—" }}</td>
+                            <td class="px-6 py-4 text-gray-600">{{ paciente.raza|default:"—" }}</td>
+                            <td class="px-6 py-4 text-gray-600 uppercase">{{ paciente.sexo|default:"—" }}</td>
+                            <td class="px-6 py-4 text-gray-600">
+                                {% if paciente.propietario %}
+                                    <div class="flex flex-col">
+                                        <span class="font-semibold text-gray-900">{{ paciente.propietario.user.get_full_name|default:paciente.propietario.user.username }}</span>
+                                        {% if paciente.propietario.telefono %}
+                                            <span class="text-xs text-gray-500">{{ paciente.propietario.telefono }}</span>
+                                        {% endif %}
+                                    </div>
+                                {% else %}
+                                    <span class="text-sm text-gray-400">Sin propietario</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="5" class="px-6 py-8 text-center text-sm text-gray-500">
+                                <i class="fas fa-paw mr-2"></i>
+                                Aún no hay mascotas registradas.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

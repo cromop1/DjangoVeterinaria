@@ -1,0 +1,74 @@
+{% extends "core/base.html" %}
+
+{% block title %}Usuarios - Sabueso Feliz{% endblock %}
+
+{% block main_class %}max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.35em] text-gray-400">Administración</p>
+            <h2 class="text-2xl font-bold text-gray-900">Usuarios del sistema</h2>
+            <p class="mt-2 max-w-2xl text-sm text-gray-600">
+                Controlá los accesos de propietarios, veterinarios y operadores para mantener la clínica organizada.
+            </p>
+        </div>
+        <a href="{% url 'crear_propietario_admin' %}" class="inline-flex items-center gap-2 rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-cyan-700">
+            <i class="fas fa-user-plus"></i>
+            Crear propietario
+        </a>
+    </div>
+
+    <div class="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm">
+        <div class="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+            <div class="flex items-center gap-3">
+                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-cyan-100 text-cyan-700">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-gray-900">Listado de usuarios</p>
+                    <p class="text-xs text-gray-500">{{ usuarios|length }} registrados</p>
+                </div>
+            </div>
+            <a href="{% url 'dashboard' %}" class="text-xs font-semibold uppercase tracking-wide text-cyan-700 hover:text-cyan-900">
+                Volver al panel
+            </a>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-widest text-gray-500">Usuario</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-widest text-gray-500">Nombre completo</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-widest text-gray-500">Email</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-widest text-gray-500">Rol</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for user in usuarios %}
+                        <tr class="hover:bg-cyan-50/40">
+                            <td class="whitespace-nowrap px-6 py-4 font-semibold text-gray-900">{{ user.username }}</td>
+                            <td class="px-6 py-4 text-gray-600">{{ user.get_full_name|default:"—" }}</td>
+                            <td class="px-6 py-4 text-gray-600">{{ user.email|default:"Sin correo" }}</td>
+                            <td class="px-6 py-4">
+                                <span class="inline-flex items-center gap-2 rounded-full bg-cyan-100 px-3 py-1 text-xs font-semibold text-cyan-700">
+                                    <i class="fas fa-id-badge"></i>
+                                    {{ user.get_rol_display }}
+                                </span>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="4" class="px-6 py-8 text-center text-sm text-gray-500">
+                                <i class="fas fa-user-slash mr-2"></i>
+                                No hay usuarios registrados todavía.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

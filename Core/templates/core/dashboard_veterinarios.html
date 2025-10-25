@@ -1,0 +1,312 @@
+{% extends "core/base.html" %}
+
+{% block title %}Panel del Equipo Veterinario{% endblock %}
+
+{% block content %}
+<section class="mb-5">
+    <div class="position-relative overflow-hidden rounded-4 border-0 shadow-sm text-white p-4 p-xl-5"
+        style="background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 40%, #0f172a 100%);">
+        <span class="badge bg-white text-primary fw-semibold text-uppercase small mb-3">Panel estratégico</span>
+        <div class="row align-items-center g-4">
+            <div class="col-xl-7">
+                <h1 class="display-6 fw-semibold mb-3">Salud coordinada para cada paciente</h1>
+                <p class="lead text-white-50 mb-4">
+                    Visualiza el pulso del equipo, anticipa la demanda de la semana y equilibra cargas para ofrecer
+                    un servicio impecable a cada familia.
+                </p>
+                <div class="d-flex flex-wrap gap-3 mb-4">
+                    <div class="bg-white bg-opacity-10 rounded-3 px-4 py-3">
+                        <p class="text-uppercase small text-white-50 mb-1">Citas activas</p>
+                        <p class="h3 fw-semibold mb-0">{{ resumen.citas_en_proceso }}</p>
+                    </div>
+                    <div class="bg-white bg-opacity-10 rounded-3 px-4 py-3">
+                        <p class="text-uppercase small text-white-50 mb-1">Cumplimiento</p>
+                        <p class="h3 fw-semibold mb-0">{{ resumen.tasa_cumplimiento }}%</p>
+                    </div>
+                    <div class="bg-white bg-opacity-10 rounded-3 px-4 py-3">
+                        <p class="text-uppercase small text-white-50 mb-1">Equipo</p>
+                        <p class="h3 fw-semibold mb-0">{{ resumen.total_veterinarios }}</p>
+                    </div>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{% url 'dashboard_veterinarios_indicadores' %}" class="btn btn-light text-primary fw-semibold rounded-pill">
+                        <i class="bi bi-graph-up-arrow me-2"></i>Ver indicadores estratégicos
+                    </a>
+                    <a href="{% url 'historial_medico_vet' %}" class="btn btn-outline-light fw-semibold rounded-pill">
+                        <i class="bi bi-journal-medical me-2"></i>Historial clínico
+                    </a>
+                </div>
+            </div>
+            <div class="col-xl-5">
+                <div class="bg-white text-dark rounded-4 p-4 h-100">
+                    <div class="d-flex align-items-start justify-content-between mb-3">
+                        <div>
+                            <p class="text-uppercase text-muted small mb-1">Próxima reunión</p>
+                            <h5 class="mb-0">Agenda semanal del equipo</h5>
+                        </div>
+                        <span class="badge bg-primary text-white">{% now "d \d\e F" %}</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between text-muted small mb-2">
+                                <span>Citas confirmadas</span>
+                                <span>{{ resumen.citas_semana }}</span>
+                            </div>
+                            <div class="progress" style="height: 6px;">
+                                <div class="progress-bar bg-primary" role="progressbar"
+                                    style="width: {{ resumen.porcentaje_semana }}%;"
+                                    aria-valuenow="{{ resumen.porcentaje_semana }}" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                        </div>
+                        <div class="text-center">
+                            <p class="fs-2 fw-semibold text-primary mb-0">{{ resumen.citas_hoy }}</p>
+                            <span class="text-muted small">hoy</span>
+                        </div>
+                    </div>
+                    <hr class="my-4">
+                    <div class="d-flex justify-content-between align-items-center text-muted small">
+                        <span><i class="bi bi-clock-history me-2"></i>Solicitudes por asignar</span>
+                        <span class="badge bg-light text-dark">{{ resumen.citas_sin_horario }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="mb-5">
+    <div class="row g-3 g-xl-4">
+        <div class="col-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-primary-subtle text-primary mb-3"
+                        style="width: 48px; height: 48px;">
+                        <i class="bi bi-people-fill fs-5"></i>
+                    </span>
+                    <p class="text-uppercase text-muted small mb-1">Veterinarios activos</p>
+                    <h3 class="fw-semibold mb-0">{{ resumen.total_veterinarios }}</h3>
+                    <p class="text-muted small mb-0">Equipo disponible para turnos clínicos.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-warning-subtle text-warning mb-3"
+                        style="width: 48px; height: 48px;">
+                        <i class="bi bi-kanban fs-5"></i>
+                    </span>
+                    <p class="text-uppercase text-muted small mb-1">Citas en proceso</p>
+                    <h3 class="fw-semibold mb-0">{{ resumen.citas_en_proceso }}</h3>
+                    <p class="text-muted small mb-0">Pendientes + programadas actualmente.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-success-subtle text-success mb-3"
+                        style="width: 48px; height: 48px;">
+                        <i class="bi bi-clipboard2-check fs-5"></i>
+                    </span>
+                    <p class="text-uppercase text-muted small mb-1">Atendidas mes</p>
+                    <h3 class="fw-semibold mb-0">{{ resumen.citas_atendidas }}</h3>
+                    <p class="text-muted small mb-0">Casos resueltos por el equipo.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-info-subtle text-info mb-3"
+                        style="width: 48px; height: 48px;">
+                        <i class="bi bi-activity fs-5"></i>
+                    </span>
+                    <p class="text-uppercase text-muted small mb-1">Tasa de cumplimiento</p>
+                    <h3 class="fw-semibold mb-0">{{ resumen.tasa_cumplimiento }}%</h3>
+                    <p class="text-muted small mb-0">Relación entre citas asistidas y agendadas.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section>
+    <div class="row g-4">
+        <div class="col-xl-8">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <h2 class="h5 mb-0">Cuidado por profesional</h2>
+                <span class="text-muted small">Seguimiento de desempeño individual</span>
+            </div>
+            <div class="row g-4">
+                {% for stat in vet_stats %}
+                <div class="col-md-6">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body d-flex flex-column">
+                            <div class="d-flex align-items-start justify-content-between mb-3">
+                                <div class="d-flex align-items-center">
+                                    <span class="rounded-circle bg-primary text-white fw-semibold d-inline-flex align-items-center justify-content-center me-3"
+                                        style="width: 52px; height: 52px;">
+                                        {{ stat.iniciales }}
+                                    </span>
+                                    <div>
+                                        <h5 class="mb-1">{{ stat.nombre_completo }}</h5>
+                                        <div class="d-flex flex-wrap align-items-center gap-2 text-muted small">
+                                            <span><i class="bi bi-envelope me-1"></i>{{ stat.veterinario.email|default:"Sin correo" }}</span>
+                                            {% if stat.veterinario.telefono %}
+                                                <span class="vr"></span>
+                                                <span><i class="bi bi-telephone me-1"></i>{{ stat.veterinario.telefono }}</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                {% if stat.veterinario.especialidad %}
+                                <span class="badge bg-primary-subtle text-primary fw-semibold">{{ stat.veterinario.especialidad }}</span>
+                                {% endif %}
+                            </div>
+
+                            <div class="row g-3 mb-4">
+                                <div class="col-6">
+                                    <div class="bg-light rounded-3 p-3">
+                                        <p class="text-muted text-uppercase small mb-1">En proceso</p>
+                                        <h4 class="fw-semibold mb-0">{{ stat.citas_en_proceso }}</h4>
+                                        <span class="text-muted small">{{ stat.citas_pendientes }} pendientes</span>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="bg-light rounded-3 p-3">
+                                        <p class="text-muted text-uppercase small mb-1">Esta semana</p>
+                                        <h4 class="fw-semibold mb-0 text-primary">{{ stat.citas_semana }}</h4>
+                                        <span class="text-muted small">confirmadas</span>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="bg-light rounded-3 p-3">
+                                        <p class="text-muted text-uppercase small mb-1">Atendidas</p>
+                                        <h4 class="fw-semibold mb-0 text-success">{{ stat.citas_atendidas }}</h4>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="bg-light rounded-3 p-3">
+                                        <p class="text-muted text-uppercase small mb-1">Totales</p>
+                                        <h4 class="fw-semibold mb-0">{{ stat.citas_totales }}</h4>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="text-muted small text-uppercase">Carga actual</span>
+                                    <span class="fw-semibold">{{ stat.porcentaje_carga }}%</span>
+                                </div>
+                                <div class="progress bg-light" style="height: 6px;">
+                                    <div class="progress-bar bg-primary" role="progressbar"
+                                        style="width: {{ stat.porcentaje_carga }}%;"
+                                        aria-valuenow="{{ stat.porcentaje_carga }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                            </div>
+
+                            <div class="mt-auto">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="fw-semibold text-dark mb-0">Próximas citas</h6>
+                                    <span class="text-muted small">Tasa de atención {{ stat.tasa_atencion }}%</span>
+                                </div>
+                                <ul class="list-group list-group-flush">
+                                    {% for cita in stat.proximas_citas %}
+                                    <li class="list-group-item px-0 d-flex align-items-start justify-content-between">
+                                        <div>
+                                            <p class="fw-semibold mb-1">{{ cita.paciente.nombre }} <span class="text-muted">({{ cita.paciente.especie }})</span></p>
+                                            <p class="text-muted small mb-1">
+                                                {% if cita.fecha_hora %}
+                                                    {{ cita.fecha_hora|date:"d/m/Y · H:i" }}
+                                                {% else %}
+                                                    {{ cita.fecha_solicitada|date:"d/m/Y" }} · Sin horario confirmado
+                                                {% endif %}
+                                            </p>
+                                            {% if cita.tipo %}
+                                                <span class="badge bg-light text-dark border">{{ cita.get_tipo_display }}</span>
+                                            {% endif %}
+                                        </div>
+                                        {% if cita.estado == "programada" %}
+                                            <span class="badge bg-warning-subtle text-warning rounded-pill">Programada</span>
+                                        {% elif cita.estado == "atendida" %}
+                                            <span class="badge bg-success-subtle text-success rounded-pill">Atendida</span>
+                                        {% elif cita.estado == "pendiente" %}
+                                            <span class="badge bg-secondary-subtle text-secondary rounded-pill">Pendiente</span>
+                                        {% endif %}
+                                    </li>
+                                    {% empty %}
+                                    <li class="list-group-item px-0 text-muted">Sin citas próximas asignadas.</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12">
+                    <div class="alert alert-info border-0 shadow-sm" role="alert">
+                        Aún no hay veterinarios registrados en la plataforma. Crea perfiles para comenzar a asignar citas.
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="col-xl-4">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h5 class="mb-0">Turnos destacados</h5>
+                        <span class="badge bg-primary-subtle text-primary">Próximos 7 días</span>
+                    </div>
+                    <ul class="list-group list-group-flush">
+                        {% for cita in proximos_turnos_equipo %}
+                        <li class="list-group-item px-0">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <p class="fw-semibold mb-1">{{ cita.paciente.nombre }}</p>
+                                    <p class="text-muted small mb-1">{{ cita.fecha_hora|date:"d/m/Y · H:i" }}</p>
+                                    {% if cita.veterinario %}
+                                        <span class="text-muted small">{{ cita.veterinario.get_full_name|default:cita.veterinario.username }}</span>
+                                    {% else %}
+                                        <span class="text-muted small">Sin veterinario asignado</span>
+                                    {% endif %}
+                                </div>
+                                <span class="badge bg-light text-dark border">{{ cita.get_tipo_display }}</span>
+                            </div>
+                        </li>
+                        {% empty %}
+                        <li class="list-group-item px-0 text-muted">Sin turnos confirmados para la semana.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h5 class="mb-0">Solicitudes por coordinar</h5>
+                        <span class="badge bg-warning-subtle text-warning">Pendientes</span>
+                    </div>
+                    <ul class="list-group list-group-flush">
+                        {% for cita in solicitudes_recientes %}
+                        <li class="list-group-item px-0">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <p class="fw-semibold mb-1">{{ cita.paciente.nombre }}</p>
+                                    <p class="text-muted small mb-1">Solicitada {{ cita.fecha_solicitada|date:"d/m/Y" }}</p>
+                                    <span class="text-muted small">{{ cita.paciente.propietario.user.get_full_name|default:cita.paciente.propietario.user.username }}</span>
+                                </div>
+                                <span class="badge bg-light text-dark border">{{ cita.get_estado_display }}</span>
+                            </div>
+                        </li>
+                        {% empty %}
+                        <li class="list-group-item px-0 text-muted">No hay solicitudes pendientes en este momento.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

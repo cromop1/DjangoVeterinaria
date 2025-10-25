@@ -1,0 +1,43 @@
+{% extends "core/base.html" %}
+
+{% block title %}Agendar Cita{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Agendar cita</h2>
+    <form method="post">{% csrf_token %}
+        <div class="mb-3">
+            <label>Mascota:</label>
+            <select name="paciente" class="form-select" required>
+                {% for m in mascotas %}
+                    <option value="{{ m.id }}" {% if paciente_seleccionado and paciente_seleccionado.id == m.id %}selected{% endif %}>
+                        {{ m.nombre }} ({{ m.especie }})
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label>Veterinario:</label>
+            <select name="veterinario" class="form-select" required>
+                {% for v in veterinarios %}
+                    <option value="{{ v.id }}">{{ v.get_full_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label>Fecha y hora:</label>
+            <input type="datetime-local" name="fecha_hora" class="form-control" required>
+        </div>
+
+        <div class="mb-3">
+            <label>Notas:</label>
+            <textarea name="notas" class="form-control"></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-success">Agendar cita</button>
+        <a href="{% url 'dashboard' %}" class="btn btn-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}

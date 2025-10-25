@@ -1,0 +1,69 @@
+{% extends 'core/base.html' %}
+{% block title %}Administrar productos{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 mb-1">Catálogo de productos</h1>
+        <p class="text-muted mb-0">Gestiona los artículos disponibles en la tienda online.</p>
+    </div>
+    <a href="{% url 'admin_producto_crear' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-2"></i>Nuevo producto</a>
+</div>
+
+{% if productos %}
+    <div class="table-responsive shadow-sm rounded-4 overflow-hidden">
+        <table class="table align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Producto</th>
+                    <th>Categoría</th>
+                    <th class="text-center">Precio</th>
+                    <th class="text-center">Estado</th>
+                    <th>Actualizado</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for producto in productos %}
+                    <tr>
+                        <td class="d-flex align-items-center gap-3">
+                            {% if producto.imagen %}
+                                <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}" class="rounded" style="width: 56px; height: 56px; object-fit: cover;">
+                            {% else %}
+                                <span class="d-inline-flex align-items-center justify-content-center rounded bg-light text-secondary" style="width: 56px; height: 56px;">
+                                    <i class="bi bi-box"></i>
+                                </span>
+                            {% endif %}
+                            <div>
+                                <strong>{{ producto.nombre }}</strong>
+                                <div class="text-muted small">{{ producto.descripcion|truncatewords:12 }}</div>
+                            </div>
+                        </td>
+                        <td>{{ producto.get_categoria_display }}</td>
+                        <td class="text-center fw-semibold">${{ producto.precio }}</td>
+                        <td class="text-center">
+                            {% if producto.disponible %}
+                                <span class="badge bg-success-subtle text-success">Activo</span>
+                            {% else %}
+                                <span class="badge bg-danger-subtle text-danger">Oculto</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ producto.actualizado|date:"d/m/Y H:i" }}</td>
+                        <td class="text-end">
+                            <a href="{% url 'detalle_producto' producto.id %}" class="btn btn-outline-secondary btn-sm me-2"><i class="bi bi-eye"></i></a>
+                            <a href="{% url 'admin_producto_editar' producto.id %}" class="btn btn-primary btn-sm"><i class="bi bi-pencil"></i></a>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <div class="text-center py-5 bg-white shadow-sm rounded-4">
+        <i class="bi bi-bag-plus fs-1 text-secondary"></i>
+        <h3 class="h4 mt-3">Aún no cargaste productos</h3>
+        <p class="text-muted">Agrega tu primer artículo para que aparezca en la tienda pública.</p>
+        <a href="{% url 'admin_producto_crear' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-2"></i>Crear producto</a>
+    </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,74 @@
+{% extends "core/base.html" %}
+
+{% block title %}Registrar nueva mascota{% endblock %}
+
+{% block content %}
+<section class="mb-4">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div>
+            <p class="text-uppercase text-muted small mb-1">Mis mascotas</p>
+            <h1 class="h3 mb-2">Registrar un nuevo compañero</h1>
+            <p class="text-muted mb-0">Completa los datos principales para que podamos coordinar turnos, vacunas y seguimientos personalizados.</p>
+        </div>
+        <a href="{% url 'mis_mascotas' %}" class="btn btn-outline-primary rounded-pill">
+            <i class="bi bi-arrow-left me-2"></i>Volver a mis mascotas
+        </a>
+    </div>
+</section>
+
+<section>
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <form method="post" class="row g-4">
+                        {% csrf_token %}
+                        <div class="col-md-6">
+                            <label for="nombre" class="form-label fw-semibold">Nombre de la mascota<span class="text-danger">*</span></label>
+                            <input type="text" class="form-control form-control-lg" id="nombre" name="nombre" placeholder="Ej. Luna" required value="{{ form_data.nombre|default:"" }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="especie" class="form-label fw-semibold">Especie<span class="text-danger">*</span></label>
+                            <input type="text" class="form-control form-control-lg" id="especie" name="especie" placeholder="Perro, gato..." required value="{{ form_data.especie|default:"" }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="raza" class="form-label fw-semibold">Raza</label>
+                            <input type="text" class="form-control" id="raza" name="raza" placeholder="Opcional" value="{{ form_data.raza|default:"" }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="sexo" class="form-label fw-semibold">Sexo<span class="text-danger">*</span></label>
+                            <select class="form-select" id="sexo" name="sexo" required>
+                                <option value="">Selecciona una opción</option>
+                                <option value="Macho" {% if form_data.sexo == "Macho" %}selected{% endif %}>Macho</option>
+                                <option value="Hembra" {% if form_data.sexo == "Hembra" %}selected{% endif %}>Hembra</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="fecha_nacimiento" class="form-label fw-semibold">Fecha de nacimiento<span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="fecha_nacimiento" name="fecha_nacimiento" required value="{{ form_data.fecha_nacimiento|default:"" }}">
+                        </div>
+                        <div class="col-12">
+                            <div class="d-flex flex-wrap gap-3 justify-content-end">
+                                <button type="reset" class="btn btn-light">Limpiar</button>
+                                <button type="submit" class="btn btn-primary px-4">Guardar mascota</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <h2 class="h5 fw-semibold">Consejos de registro</h2>
+                    <ul class="list-unstyled small text-muted mb-0">
+                        <li class="d-flex gap-2 mb-2"><i class="bi bi-check-circle-fill text-primary"></i>Ingresá la fecha real para que podamos sugerir controles y vacunaciones.</li>
+                        <li class="d-flex gap-2 mb-2"><i class="bi bi-check-circle-fill text-primary"></i>Podés editar estos datos luego desde la ficha de tu mascota.</li>
+                        <li class="d-flex gap-2"><i class="bi bi-check-circle-fill text-primary"></i>Si aún no conocés la raza exacta, deja el campo vacío o escribe "Mestizo".</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

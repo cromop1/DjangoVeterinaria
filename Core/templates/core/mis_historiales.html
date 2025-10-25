@@ -1,0 +1,16 @@
+{% extends "core/base.html" %}
+
+{% block title %}Mis Historiales{% endblock %}
+
+{% block content %}
+<h2>Mis Historiales Médicos</h2>
+<ul class="list-group mt-3">
+    {% for hist in historiales %}
+        <li class="list-group-item">
+            {{ hist.paciente.nombre }} - {{ hist.fecha }} - {{ hist.diagnostico }}
+        </li>
+    {% empty %}
+        <li class="list-group-item">No hay historiales médicos asignados</li>
+    {% endfor %}
+</ul>
+{% endblock %}

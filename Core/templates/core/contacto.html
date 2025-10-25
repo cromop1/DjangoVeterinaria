@@ -1,0 +1,90 @@
+{% extends 'core/base.html' %}
+{% block title %}Contacto - Veterinaria Sabueso Feliz{% endblock %}
+
+{% block content %}
+<section class="mb-5">
+    <div class="row g-4 align-items-center">
+        <div class="col-lg-6">
+            <div class="bg-primary text-white rounded-4 p-5 shadow-lg h-100">
+                <span class="badge bg-white text-primary fw-semibold text-uppercase mb-3">Estamos para ayudarte</span>
+                <h1 class="display-5 fw-bold mb-3">Contacta a Sabueso Feliz</h1>
+                <p class="lead mb-4 opacity-75">
+                    Coordina turnos, solicita información sobre tratamientos o conoce más sobre nuestros planes de bienestar.
+                    Nuestro equipo responderá a la brevedad por el canal que prefieras.
+                </p>
+                <div class="d-flex flex-wrap gap-3">
+                    <a href="{{ whatsapp_url }}" class="btn btn-light btn-lg px-4 text-primary fw-semibold" target="_blank" rel="noopener">
+                        <i class="bi bi-whatsapp me-2"></i>Escribir por WhatsApp
+                    </a>
+                    <a href="{{ telefono_link }}" class="btn btn-outline-light btn-lg px-4">
+                        <i class="bi bi-telephone-outbound me-2"></i>Llamar ahora
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-lg h-100">
+                <div class="card-body p-4 p-lg-5">
+                    <h2 class="h3 fw-bold mb-4">Información de contacto</h2>
+                    <div class="d-flex align-items-start gap-3 mb-4">
+                        <span class="badge rounded-pill bg-primary-subtle text-primary p-3"><i class="bi bi-geo-alt"></i></span>
+                        <div>
+                            <p class="fw-semibold mb-1">Ubicación</p>
+                            <p class="text-muted mb-0">{{ direccion }}</p>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-start gap-3 mb-4">
+                        <span class="badge rounded-pill bg-success-subtle text-success p-3"><i class="bi bi-telephone"></i></span>
+                        <div>
+                            <p class="fw-semibold mb-1">Teléfono</p>
+                            <p class="text-muted mb-0">{{ telefono }}</p>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-start gap-3 mb-4">
+                        <span class="badge rounded-pill bg-info-subtle text-info p-3"><i class="bi bi-envelope"></i></span>
+                        <div>
+                            <p class="fw-semibold mb-1">Correo electrónico</p>
+                            <p class="text-muted mb-0">{{ email }}</p>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-start gap-3">
+                        <span class="badge rounded-pill bg-warning-subtle text-warning p-3"><i class="bi bi-clock-history"></i></span>
+                        <div>
+                            <p class="fw-semibold mb-1">Horarios de atención</p>
+                            <ul class="list-unstyled text-muted mb-0">
+                                {% for rango, horario in horarios.items %}
+                                    <li><strong>{{ rango }}:</strong> {{ horario }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="bg-white border rounded-4 shadow-sm p-4 p-lg-5">
+    <div class="row g-4 align-items-center">
+        <div class="col-lg-5">
+            <h2 class="h3 fw-bold mb-3">Visítanos</h2>
+            <p class="text-muted mb-4">
+                Estamos ubicados en el corazón de Córdoba capital, con fácil acceso y estacionamiento. Agenda tu cita por WhatsApp o teléfono y te esperamos con todo listo para tu mascota.
+            </p>
+            <a href="{{ whatsapp_url }}" class="btn btn-outline-primary px-4" target="_blank" rel="noopener">
+                <i class="bi bi-chat-dots me-2"></i>Coordinar visita
+            </a>
+        </div>
+        <div class="col-lg-7">
+            <div class="ratio ratio-16x9 rounded-4 overflow-hidden">
+                <iframe
+                    src="https://www.google.com/maps?q=Juan+Perrin+6089,+C%C3%B3rdoba,+Argentina&output=embed"
+                    allowfullscreen
+                    loading="lazy"
+                    referrerpolicy="no-referrer-when-downgrade"
+                ></iframe>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

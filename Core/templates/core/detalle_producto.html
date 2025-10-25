@@ -1,0 +1,76 @@
+{% extends 'core/base.html' %}
+{% block title %}{{ producto.nombre }} - Tienda{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="bg-white rounded-4 shadow-sm p-3 h-100 d-flex align-items-center justify-content-center">
+            {% if producto.imagen %}
+                <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}" class="img-fluid rounded-3">
+            {% else %}
+                <div class="text-center text-secondary py-5 w-100">
+                    <i class="bi bi-box-seam fs-1"></i>
+                    <p class="mt-3">Sin imagen disponible</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <span class="badge bg-primary-subtle text-primary mb-3">{{ producto.get_categoria_display }}</span>
+                <h1 class="h3 mb-3">{{ producto.nombre }}</h1>
+                <p class="text-muted">{{ producto.descripcion }}</p>
+                <div class="d-flex align-items-baseline gap-3 mt-4">
+                    <span class="display-6 text-primary fw-bold">${{ producto.precio }}</span>
+                    {% if producto.disponible %}
+                        <span class="badge bg-success-subtle text-success">Disponible</span>
+                    {% else %}
+                        <span class="badge bg-danger-subtle text-danger">No disponible</span>
+                    {% endif %}
+                </div>
+                <div class="mt-4 d-flex gap-3">
+                    <a href="{% url 'tienda' %}" class="btn btn-outline-primary"><i class="bi bi-arrow-left me-2"></i>Volver a la tienda</a>
+                    {% if producto.telefono_whatsapp %}
+                        <a href="https://wa.me/{{ producto.telefono_whatsapp }}?text={{ producto.mensaje_whatsapp|urlencode }}"
+                           class="btn btn-success"
+                           target="_blank"
+                           rel="noopener">
+                            <i class="bi bi-whatsapp me-2"></i>Comprar por WhatsApp
+                        </a>
+                    {% endif %}
+                    {% if request.user.is_authenticated and request.user.rol == 'ADMIN' %}
+                        <a href="{% url 'admin_producto_editar' producto.id %}" class="btn btn-primary"><i class="bi bi-pencil-square me-2"></i>Editar</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if relacionados %}
+    <div class="mt-5">
+        <h2 class="h4 mb-3">También te puede interesar</h2>
+        <div class="row g-4">
+            {% for item in relacionados %}
+                <div class="col-md-3">
+                    <div class="card h-100 border-0 shadow-sm">
+                        {% if item.imagen %}
+                            <img src="{{ item.imagen.url }}" class="card-img-top" alt="{{ item.nombre }}">
+                        {% else %}
+                            <div class="bg-light d-flex align-items-center justify-content-center" style="height: 160px;">
+                                <i class="bi bi-bag fs-2 text-secondary"></i>
+                            </div>
+                        {% endif %}
+                        <div class="card-body">
+                            <h5 class="card-title">{{ item.nombre }}</h5>
+                            <p class="card-text text-muted small">${{ item.precio }}</p>
+                            <a href="{% url 'detalle_producto' item.id %}" class="btn btn-outline-primary btn-sm">Ver producto</a>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

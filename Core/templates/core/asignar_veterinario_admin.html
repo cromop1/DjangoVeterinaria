@@ -1,0 +1,35 @@
+{% extends "core/base.html" %}
+
+{% block title %}Asignar Veterinario{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Asignar Usuarios como Veterinarios</h2>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-success">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    {% if usuarios %}
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label for="usuario" class="form-label">Seleccionar Usuario:</label>
+                <select name="usuario" id="usuario" class="form-select" required>
+                    {% for user in usuarios %}
+                        <option value="{{ user.id }}">
+                            {{ user.get_full_name }} {% if user.rol %} (Rol actual: {{ user.get_rol_display }}){% endif %}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-success">Asignar como Veterinario</button>
+        </form>
+    {% else %}
+        <p>No hay usuarios disponibles para asignar como veterinarios.</p>
+    {% endif %}
+
+</div>
+{% endblock %}

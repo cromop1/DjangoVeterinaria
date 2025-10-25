@@ -1,0 +1,116 @@
+{% extends "core/base.html" %}
+
+{% block title %}Detalle Historial{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-xl-10">
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <div class="card-header bg-gradient text-white py-4" style="background: linear-gradient(135deg, #1f2937 0%, #0f172a 40%, #2563eb 100%);">
+                    <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+                        <div>
+                            <p class="text-uppercase small text-white-50 mb-1">Historial clínico</p>
+                            <h1 class="h4 mb-0">{{ historial.paciente.nombre }} <span class="text-white-50">({{ historial.paciente.especie }})</span></h1>
+                        </div>
+                        <div class="text-md-end">
+                            <span class="badge bg-white text-dark fw-semibold">Registrado el {{ historial.fecha|date:"d/m/Y H:i" }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-body p-4 p-xl-5">
+                    <div class="row g-4 mb-4">
+                        <div class="col-lg-6">
+                            <div class="rounded-4 border border-light p-4 h-100 bg-white">
+                                <p class="text-uppercase small text-muted mb-2 fw-semibold">Propietario</p>
+                                {% if historial.paciente.propietario %}
+                                    {% with propietario=historial.paciente.propietario %}
+                                    <h2 class="h5 mb-1">{{ propietario.user.get_full_name|default:propietario.user.username }}</h2>
+                                    <p class="text-muted small mb-1"><i class="bi bi-telephone me-2"></i>{{ propietario.telefono|default:"Sin teléfono" }}</p>
+                                    <p class="text-muted small mb-1"><i class="bi bi-envelope me-2"></i>{{ propietario.user.email|default:"Sin correo" }}</p>
+                                    <p class="text-muted small mb-0"><i class="bi bi-geo-alt me-2"></i>{{ propietario.direccion|default:propietario.user.direccion|default:"Sin dirección" }}</p>
+                                    {% endwith %}
+                                {% else %}
+                                    <p class="text-muted mb-0">Sin propietario registrado.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="rounded-4 border border-light p-4 h-100 bg-white">
+                                <p class="text-uppercase small text-muted mb-2 fw-semibold">Profesional</p>
+                                <h2 class="h5 mb-1">{{ historial.veterinario.get_full_name|default:historial.veterinario.username|default:"Equipo Sabueso Feliz" }}</h2>
+                                {% if historial.cita %}
+                                    <p class="text-muted small mb-0"><i class="bi bi-calendar-event me-2"></i>Asociado a la cita del {{ historial.cita.fecha_solicitada|date:"d/m/Y" }}</p>
+                                {% else %}
+                                    <p class="text-muted small mb-0"><i class="bi bi-calendar-event me-2"></i>Registro manual sin cita vinculada</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-4">
+                        <div class="col-xl-8">
+                            <div class="rounded-4 border border-light p-4 h-100 bg-white">
+                                <h3 class="h5 mb-3">Resumen clínico</h3>
+                                <p class="mb-3"><span class="fw-semibold text-muted text-uppercase small d-block">Diagnóstico</span>{{ historial.diagnostico }}</p>
+                                <p class="mb-3"><span class="fw-semibold text-muted text-uppercase small d-block">Tratamiento</span>{{ historial.tratamiento }}</p>
+                                <p class="mb-3"><span class="fw-semibold text-muted text-uppercase small d-block">Notas</span>{{ historial.notas|default:"Sin observaciones adicionales" }}</p>
+                                <div class="row g-3">
+                                    <div class="col-sm-4">
+                                        <p class="mb-0"><span class="text-uppercase small text-muted d-block">Peso</span>{{ historial.peso|default:"-" }} kg</p>
+                                    </div>
+                                    <div class="col-sm-4">
+                                        <p class="mb-0"><span class="text-uppercase small text-muted d-block">Temperatura</span>{{ historial.temperatura|default:"-" }} °C</p>
+                                    </div>
+                                    <div class="col-sm-4">
+                                        <p class="mb-0"><span class="text-uppercase small text-muted d-block">Próximo paso</span>
+                                            {% if historial.sin_proximo_control %}
+                                                No requiere seguimiento programado
+                                            {% elif historial.proximo_control %}
+                                                {{ historial.proximo_control|date:"d/m/Y" }}
+                                            {% else %}
+                                                A definir
+                                            {% endif %}
+                                        </p>
+                                    </div>
+                                </div>
+                                {% if historial.examenes %}
+                                <div class="mt-4">
+                                    <span class="fw-semibold text-muted text-uppercase small d-block">Exámenes realizados</span>
+                                    <p class="mb-0">{{ historial.examenes }}</p>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-xl-4">
+                            <div class="rounded-4 border border-light p-4 h-100 d-flex flex-column justify-content-between bg-white">
+                                <div>
+                                    <h3 class="h6 text-uppercase text-muted fw-semibold mb-3">Material complementario</h3>
+                                    {% if historial.imagenes %}
+                                        <img src="{{ historial.imagenes.url }}" class="img-fluid rounded-3 border shadow-sm mb-3" alt="Adjunto clínico">
+                                        <a href="{{ historial.imagenes.url }}" download class="btn btn-outline-primary w-100">
+                                            <i class="bi bi-download me-2"></i>Descargar adjunto
+                                        </a>
+                                    {% else %}
+                                        <p class="text-muted small mb-0">No se adjuntaron estudios visuales para este informe.</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mt-5">
+                        <a href="{% url 'historial_medico_vet' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-2"></i>Volver al historial
+                        </a>
+                        <a href="{% url 'detalle_mascota' historial.paciente.id %}" class="btn btn-primary">
+                            Ver ficha de {{ historial.paciente.nombre }}
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

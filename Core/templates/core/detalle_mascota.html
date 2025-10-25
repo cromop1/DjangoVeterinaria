@@ -1,0 +1,210 @@
+{% extends "core/base.html" %}
+
+{% block title %}Ficha de {{ paciente.nombre }}{% endblock %}
+
+{% block content %}
+<div class="py-4">
+    <div class="d-flex flex-column flex-lg-row align-items-center align-items-lg-start justify-content-between gap-4 mb-4">
+        <div class="d-flex align-items-center gap-3">
+            <div class="rounded-circle bg-primary-subtle text-primary fw-semibold d-flex align-items-center justify-content-center"
+                 style="width: 80px; height: 80px; font-size: 2.25rem;">
+                {% if paciente.especie|lower == "gato" %}🐱{% elif paciente.especie|lower == "ave" %}🦜{% else %}🐾{% endif %}
+            </div>
+            <div>
+                <h1 class="h3 mb-1">{{ paciente.nombre }}</h1>
+                <p class="text-muted mb-0">{{ paciente.especie }}{% if paciente.raza %} • {{ paciente.raza }}{% endif %}</p>
+            </div>
+        </div>
+
+        <div class="d-flex flex-column flex-sm-row align-items-sm-center gap-2">
+            {% if proxima_cita %}
+            <div class="card border-success-subtle text-success-emphasis">
+                <div class="card-body py-2 px-3">
+                    <small class="d-block text-uppercase fw-semibold">Próxima cita</small>
+                    {% if proxima_cita.fecha_hora %}
+                        <span class="fw-semibold">{{ proxima_cita.fecha_hora|date:"d/m/Y H:i" }}</span>
+                    {% else %}
+                        <span class="fw-semibold">{{ proxima_cita.fecha_solicitada|date:"d/m/Y" }} · Horario a confirmar</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+            {% if ultima_consulta %}
+            <div class="card border-info-subtle text-info-emphasis">
+                <div class="card-body py-2 px-3">
+                    <small class="d-block text-uppercase fw-semibold">Último informe</small>
+                    <span class="fw-semibold">{{ ultima_consulta.fecha|date:"d/m/Y" }}</span>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title d-flex align-items-center gap-2">
+                        <i class="bi bi-info-circle"></i>
+                        Información general
+                    </h5>
+                    <ul class="list-unstyled mb-4">
+                        <li class="d-flex justify-content-between py-1 border-bottom"><span>Especie</span><span class="fw-medium">{{ paciente.especie }}</span></li>
+                        <li class="d-flex justify-content-between py-1 border-bottom"><span>Raza</span><span class="fw-medium">{{ paciente.raza|default:"-" }}</span></li>
+                        <li class="d-flex justify-content-between py-1 border-bottom"><span>Sexo</span><span class="fw-medium">{{ paciente.sexo }}</span></li>
+                        <li class="d-flex justify-content-between py-1"><span>Nacimiento</span><span class="fw-medium">{{ paciente.fecha_nacimiento|date:"d/m/Y" }}</span></li>
+                    </ul>
+
+                    {% if paciente.propietario %}
+                    <div class="bg-light rounded-3 p-3 mb-3">
+                        <p class="text-uppercase small fw-semibold mb-2">Propietario</p>
+                        <p class="mb-1 fw-medium">{{ paciente.propietario.user.get_full_name|default:paciente.propietario.user.username }}</p>
+                        <p class="mb-0 text-muted"><i class="bi bi-telephone me-1"></i>{{ paciente.propietario.telefono|default:"-" }}</p>
+                    </div>
+                    {% endif %}
+
+                    {% if request.user.rol == "VET" %}
+                    <a href="{% url 'registrar_historial' paciente.id %}" class="btn btn-primary w-100">
+                        <i class="bi bi-journal-plus me-2"></i>Registrar historial
+                    </a>
+                    {% elif request.user.rol == "OWNER" %}
+                    <a href="{% url 'agendar_cita' %}?paciente={{ paciente.id }}" class="btn btn-outline-primary w-100">
+                        <i class="bi bi-calendar-plus me-2"></i>Agendar nueva cita
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="card-title mb-0"><i class="bi bi-calendar-event me-2"></i>Próximas citas</h5>
+                        {% if request.user.rol == "OWNER" %}
+                        <a href="{% url 'agendar_cita' %}?paciente={{ paciente.id }}" class="btn btn-sm btn-primary">
+                            <i class="bi bi-plus-lg me-1"></i>Nueva cita
+                        </a>
+                        {% endif %}
+                    </div>
+
+                    {% if citas_futuras %}
+                    <div class="list-group list-group-flush">
+                        {% for cita in citas_futuras %}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <p class="mb-1 fw-semibold">
+                                        {% if cita.fecha_hora %}
+                                            {{ cita.fecha_hora|date:"d/m/Y H:i" }}
+                                        {% else %}
+                                            {{ cita.fecha_solicitada|date:"d/m/Y" }} · Horario a confirmar
+                                        {% endif %}
+                                    </p>
+                                    <p class="mb-0 text-muted small">Estado: {{ cita.get_estado_display }}</p>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-primary-subtle text-primary-emphasis">{{ cita.veterinario|default:"Sin asignar" }}</span>
+                                </div>
+                            </div>
+                            {% if cita.notas %}
+                            <p class="mt-2 mb-0 small text-muted">Notas: {{ cita.notas }}</p>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-calendar-x display-6 d-block mb-2"></i>
+                        <p class="mb-0">No hay citas próximas agendadas.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title mb-3"><i class="bi bi-journal-medical me-2"></i>Historial médico</h5>
+                    {% if historiales %}
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Veterinario</th>
+                                    <th>Diagnóstico</th>
+                                    <th>Tratamiento</th>
+                                    <th class="text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for hist in historiales %}
+                                <tr>
+                                    <td class="text-nowrap">{{ hist.fecha|date:"d/m/Y" }}</td>
+                                    <td>{{ hist.veterinario.get_full_name|default:hist.veterinario.username }}</td>
+                                    <td>{{ hist.diagnostico }}</td>
+                                    <td>{{ hist.tratamiento|default:"-" }}</td>
+                                    <td class="text-center">
+                                        <a href="{% url 'detalle_historial' hist.id %}" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-journal-text me-1"></i>Ver informe
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-clipboard2-pulse display-6 d-block mb-2"></i>
+                        <p class="mb-0">Todavía no hay informes médicos registrados.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if citas_pasadas %}
+            <div class="card shadow-sm mt-4">
+                <div class="card-body">
+                    <h5 class="card-title mb-3"><i class="bi bi-clock-history me-2"></i>Citas anteriores</h5>
+                    <div class="list-group list-group-flush">
+                        {% for cita in citas_pasadas %}
+                        <div class="list-group-item">
+                            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                                <div class="flex-grow-1">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="fw-semibold">
+                                            {% if cita.fecha_hora %}
+                                                {{ cita.fecha_hora|date:"d/m/Y H:i" }}
+                                            {% else %}
+                                                {{ cita.fecha_solicitada|date:"d/m/Y" }} · Horario no registrado
+                                            {% endif %}
+                                        </span>
+                                        <span class="badge {% if cita.estado == 'atendida' %}bg-success-subtle text-success-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %}">
+                                            {{ cita.get_estado_display }}
+                                        </span>
+                                    </div>
+                                    <p class="mb-0 text-muted small">Veterinario: {{ cita.veterinario|default:"Sin asignar" }}</p>
+                                </div>
+                                {% if cita.estado == 'atendida' %}
+                                    {% if cita.historial_relacionado %}
+                                    <a href="{% url 'detalle_historial' cita.historial_relacionado.id %}" class="btn btn-sm btn-outline-primary text-nowrap">
+                                        <i class="bi bi-journal-text me-1"></i>Ver informe médico
+                                    </a>
+                                    {% else %}
+                                    <a href="{% url 'detalle_cita' cita.id %}" class="btn btn-sm btn-outline-secondary text-nowrap">
+                                        <i class="bi bi-calendar2-event me-1"></i>Ver detalle
+                                    </a>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

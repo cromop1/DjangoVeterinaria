@@ -1,0 +1,156 @@
+{% extends "core/base.html" %}
+
+{% block title %}Registrar historial - Sabueso Feliz{% endblock %}
+
+{% block main_class %}max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.35em] text-gray-400">Historial médico</p>
+            <h2 class="text-2xl font-bold text-gray-900">Nuevo registro para {{ paciente.nombre }}</h2>
+            <p class="mt-2 max-w-2xl text-sm text-gray-600">
+                Documentá diagnósticos, tratamientos y observaciones clave para mantener una trazabilidad clínica impecable.
+            </p>
+        </div>
+        <a href="{% url 'detalle_mascota' paciente.id %}" class="inline-flex items-center gap-2 rounded-lg border border-cyan-200 px-4 py-2 text-sm font-semibold text-cyan-700 hover:bg-cyan-50">
+            <i class="fas fa-arrow-left"></i>
+            Volver al perfil de {{ paciente.nombre }}
+        </a>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" class="space-y-6 rounded-3xl border border-gray-200 bg-white p-8 shadow-sm">
+        {% csrf_token %}
+        {% if cita_asociada %}
+        <input type="hidden" name="cita_id" value="{{ cita_asociada.id }}">
+        <div class="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4">
+            <p class="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-500">Cita vinculada</p>
+            <div class="mt-2 flex flex-wrap items-center gap-3 text-sm text-emerald-900">
+                <span class="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 font-semibold shadow-sm">
+                    <i class="fas fa-calendar-check"></i>
+                    {{ cita_asociada.fecha_solicitada|date:"d/m/Y" }}
+                    {% if cita_asociada.fecha_hora %}
+                        • {{ cita_asociada.fecha_hora|date:"H:i" }}
+                    {% endif %}
+                </span>
+                {% if cita_asociada.veterinario %}
+                <span class="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1">
+                    <i class="fas fa-user-md"></i>
+                    {{ cita_asociada.veterinario.get_full_name|default:cita_asociada.veterinario.username }}
+                </span>
+                {% endif %}
+                <span class="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1">
+                    <i class="fas fa-dog"></i>
+                    {{ cita_asociada.paciente.nombre }}
+                </span>
+            </div>
+            <p class="mt-3 text-xs text-emerald-700">El informe se guardará asociado a esta cita para mantener el historial clínico alineado con la agenda.</p>
+        </div>
+        {% endif %}
+        <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div class="space-y-2">
+                <label class="text-sm font-semibold text-gray-700" for="diagnostico">Diagnóstico</label>
+                <textarea id="diagnostico" name="diagnostico" rows="4" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-700 focus:border-cyan-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-cyan-200" required></textarea>
+            </div>
+            <div class="space-y-2">
+                <label class="text-sm font-semibold text-gray-700" for="tratamiento">Tratamiento</label>
+                <textarea id="tratamiento" name="tratamiento" rows="4" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-700 focus:border-cyan-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-cyan-200" required></textarea>
+            </div>
+        </div>
+
+        <div class="space-y-2">
+            <label class="text-sm font-semibold text-gray-700" for="notas">Notas adicionales</label>
+            <textarea id="notas" name="notas" rows="3" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-700 focus:border-cyan-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-cyan-200"></textarea>
+        </div>
+
+        <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
+            <div class="space-y-2">
+                <label class="text-sm font-semibold text-gray-700" for="peso">Peso (kg)</label>
+                <input id="peso" type="number" step="0.01" name="peso" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-700 focus:border-cyan-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-cyan-200">
+            </div>
+            <div class="space-y-2">
+                <label class="text-sm font-semibold text-gray-700" for="temperatura">Temperatura (°C)</label>
+                <input id="temperatura" type="number" step="0.1" name="temperatura" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-700 focus:border-cyan-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-cyan-200">
+            </div>
+            <div class="space-y-2">
+                <label class="text-sm font-semibold text-gray-700" for="proximo_control">Próximo control</label>
+                <input id="proximo_control" type="date" name="proximo_control" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-700 focus:border-cyan-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-cyan-200">
+                <label class="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-emerald-700">
+                    <input type="checkbox" id="sin_proximo_control" name="sin_proximo_control" class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500">
+                    Este caso no requiere control posterior
+                </label>
+            </div>
+        </div>
+
+        <div class="space-y-2">
+            <label class="text-sm font-semibold text-gray-700" for="examenes">Exámenes solicitados</label>
+            <textarea id="examenes" name="examenes" rows="3" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-700 focus:border-cyan-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-cyan-200"></textarea>
+        </div>
+
+        <div class="rounded-2xl border border-dashed border-cyan-300 bg-cyan-50/70 p-5">
+            <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                    <p class="text-sm font-semibold text-cyan-800">Adjuntar estudios o imágenes de la atención</p>
+                    <p class="text-xs text-cyan-700">Activá la opción para subir ecografías, radiografías u otros registros visuales.</p>
+                </div>
+                <label class="inline-flex items-center gap-2 text-sm font-semibold text-cyan-800">
+                    <input type="checkbox" id="adjuntar_estudios" name="adjuntar_estudios" class="h-4 w-4 rounded border-cyan-400 text-cyan-600 focus:ring-cyan-500">
+                    Adjuntar archivo
+                </label>
+            </div>
+            <div id="wrapper-estudio" class="mt-4 hidden">
+                <label for="estudio_imagen" class="text-xs font-semibold uppercase tracking-[0.25em] text-cyan-500">Archivo clínico (PNG o JPG)</label>
+                <input id="estudio_imagen" type="file" name="estudio_imagen" accept="image/png,image/jpeg" class="mt-2 w-full cursor-pointer rounded-xl border border-cyan-200 bg-white px-4 py-3 text-sm text-cyan-900 shadow-sm focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-300">
+            </div>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-end gap-3">
+            <a href="{% url 'detalle_mascota' paciente.id %}" class="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100">
+                <i class="fas fa-times"></i>
+                Cancelar
+            </a>
+            <button type="submit" class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow hover:bg-emerald-700">
+                <i class="fas fa-save"></i>
+                Guardar historial
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const sinControl = document.getElementById('sin_proximo_control');
+    const proximo = document.getElementById('proximo_control');
+    const toggleEstudios = document.getElementById('adjuntar_estudios');
+    const wrapperEstudio = document.getElementById('wrapper-estudio');
+    const inputEstudio = document.getElementById('estudio_imagen');
+
+    function actualizarControl() {
+        if (!sinControl || !proximo) return;
+        const sinSeguimiento = sinControl.checked;
+        proximo.disabled = sinSeguimiento;
+        if (sinSeguimiento) {
+            proximo.value = '';
+        }
+    }
+
+    function actualizarAdjunto() {
+        if (!wrapperEstudio) return;
+        const mostrar = toggleEstudios && toggleEstudios.checked;
+        wrapperEstudio.classList.toggle('hidden', !mostrar);
+        if (!mostrar && inputEstudio) {
+            inputEstudio.value = '';
+        }
+    }
+
+    sinControl && sinControl.addEventListener('change', actualizarControl);
+    toggleEstudios && toggleEstudios.addEventListener('change', actualizarAdjunto);
+
+    actualizarControl();
+    actualizarAdjunto();
+});
+</script>
+{% endblock %}

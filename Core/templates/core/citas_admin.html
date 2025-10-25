@@ -1,0 +1,284 @@
+{% extends "core/base.html" %}
+
+{% block title %}Gestión integral de citas - Sabueso Feliz{% endblock %}
+
+{% block main_class %}max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10{% endblock %}
+
+{% block content %}
+<div class="space-y-10">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.35em] text-gray-400">Administración</p>
+            <h2 class="text-2xl font-bold text-gray-900">Citas y agenda clínica</h2>
+            <p class="mt-2 max-w-2xl text-sm text-gray-600">
+                Supervisá toda la agenda de la clínica, filtrá por estado o profesional y coordiná acciones inmediatas sobre cada cita.
+            </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+            <span class="inline-flex items-center gap-2 rounded-full bg-cyan-50 px-4 py-2 text-sm font-semibold text-cyan-700">
+                <i class="fas fa-database"></i>
+                {{ total_global }} citas en total
+            </span>
+            <a href="{% url 'asignar_veterinario_citas' %}" class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-700">
+                <i class="fas fa-user-plus"></i>
+                Asignar turnos pendientes
+            </a>
+        </div>
+    </div>
+
+    <section class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <article class="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
+            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Pendientes</p>
+            <p class="mt-3 text-3xl font-bold text-blue-600">{{ resumen_filtrado.pendiente }}</p>
+            <p class="mt-1 text-xs text-gray-500">En espera de confirmación</p>
+        </article>
+        <article class="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm">
+            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Programadas</p>
+            <p class="mt-3 text-3xl font-bold text-emerald-600">{{ resumen_filtrado.programada }}</p>
+            <p class="mt-1 text-xs text-gray-500">Con horario confirmado</p>
+        </article>
+        <article class="rounded-2xl border border-purple-100 bg-white p-5 shadow-sm">
+            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Atendidas</p>
+            <p class="mt-3 text-3xl font-bold text-purple-600">{{ resumen_filtrado.atendida }}</p>
+            <p class="mt-1 text-xs text-gray-500">Finalizadas recientemente</p>
+        </article>
+        <article class="rounded-2xl border border-rose-100 bg-white p-5 shadow-sm">
+            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Canceladas</p>
+            <p class="mt-3 text-3xl font-bold text-rose-600">{{ resumen_filtrado.cancelada }}</p>
+            <p class="mt-1 text-xs text-gray-500">Reprogramar si corresponde</p>
+        </article>
+    </section>
+
+    <form method="get" class="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div>
+                <label for="buscar" class="block text-xs font-semibold uppercase tracking-wide text-gray-500">Buscar</label>
+                <input type="text" id="buscar" name="q" value="{{ filtros.q }}" placeholder="Paciente, propietario, nota..." class="mt-2 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:border-cyan-500 focus:ring-cyan-500" />
+            </div>
+            <div>
+                <label for="estado" class="block text-xs font-semibold uppercase tracking-wide text-gray-500">Estado</label>
+                <select id="estado" name="estado" class="mt-2 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:border-cyan-500 focus:ring-cyan-500">
+                    <option value="">Todos</option>
+                    {% for valor, etiqueta in estados %}
+                        <option value="{{ valor }}" {% if filtros.estado == valor %}selected{% endif %}>{{ etiqueta }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="tipo" class="block text-xs font-semibold uppercase tracking-wide text-gray-500">Tipo</label>
+                <select id="tipo" name="tipo" class="mt-2 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:border-cyan-500 focus:ring-cyan-500">
+                    <option value="">Todos</option>
+                    {% for valor, etiqueta in tipos %}
+                        <option value="{{ valor }}" {% if filtros.tipo == valor %}selected{% endif %}>{{ etiqueta }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="veterinario" class="block text-xs font-semibold uppercase tracking-wide text-gray-500">Veterinario</label>
+                <select id="veterinario" name="veterinario" class="mt-2 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:border-cyan-500 focus:ring-cyan-500">
+                    <option value="">Todos</option>
+                    <option value="sin_asignar" {% if filtros.veterinario == 'sin_asignar' %}selected{% endif %}>Sin asignar</option>
+                    {% for veterinario in veterinarios %}
+                        <option value="{{ veterinario.id }}" {% if filtros.veterinario|add:'' == veterinario.id|add:'' %}selected{% endif %}>
+                            {{ veterinario.get_full_name|default:veterinario.username }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="propietario" class="block text-xs font-semibold uppercase tracking-wide text-gray-500">Propietario</label>
+                <select id="propietario" name="propietario" class="mt-2 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:border-cyan-500 focus:ring-cyan-500">
+                    <option value="">Todos</option>
+                    {% for propietario in propietarios %}
+                        <option value="{{ propietario.id }}" {% if filtros.propietario|add:'' == propietario.id|add:'' %}selected{% endif %}>
+                            {{ propietario.user.get_full_name|default:propietario.user.username }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="desde" class="block text-xs font-semibold uppercase tracking-wide text-gray-500">Desde</label>
+                <input type="date" id="desde" name="desde" value="{{ filtros.desde }}" class="mt-2 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:border-cyan-500 focus:ring-cyan-500" />
+            </div>
+            <div>
+                <label for="hasta" class="block text-xs font-semibold uppercase tracking-wide text-gray-500">Hasta</label>
+                <input type="date" id="hasta" name="hasta" value="{{ filtros.hasta }}" class="mt-2 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:border-cyan-500 focus:ring-cyan-500" />
+            </div>
+            <div class="flex items-center gap-2 pt-7">
+                <input type="checkbox" id="sin_veterinario" name="sin_veterinario" value="1" class="h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500" {% if filtros.sin_veterinario %}checked{% endif %}>
+                <label for="sin_veterinario" class="text-sm text-gray-600">Solo sin veterinario asignado</label>
+            </div>
+        </div>
+        <div class="mt-6 flex flex-wrap items-center gap-3">
+            <button type="submit" class="inline-flex items-center gap-2 rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-cyan-700">
+                <i class="fas fa-filter"></i>
+                Aplicar filtros
+            </button>
+            <a href="{% url 'listar_citas_admin' %}" class="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100">
+                <i class="fas fa-rotate-left"></i>
+                Limpiar
+            </a>
+            <span class="text-xs text-gray-500">{{ total_citas }} coincidencias en la vista actual.</span>
+        </div>
+    </form>
+
+    {% if proximas_citas %}
+        <section class="rounded-3xl border border-cyan-100 bg-cyan-50/60 p-6 shadow-sm">
+            <h3 class="text-lg font-semibold text-cyan-900">Próximas citas confirmadas</h3>
+            <p class="text-sm text-cyan-800/80">Acciones rápidas para los próximos compromisos.</p>
+            <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {% for cita in proximas_citas %}
+                    <article class="rounded-2xl border border-cyan-100 bg-white p-4 shadow-sm">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-cyan-600">{{ cita.fecha_hora|date:"d \d\e F" }} · {{ cita.fecha_hora|date:"H:i" }} hs</p>
+                        <h4 class="mt-1 text-lg font-semibold text-gray-900">{{ cita.paciente.nombre }}</h4>
+                        <p class="mt-1 text-sm text-gray-600">Propietario: {{ cita.paciente.propietario.user.get_full_name|default:cita.paciente.propietario.user.username }}</p>
+                        <p class="mt-1 text-sm text-gray-600">Veterinario: {% if cita.veterinario %}{{ cita.veterinario.get_full_name|default:cita.veterinario.username }}{% else %}Sin asignar{% endif %}</p>
+                        <div class="mt-3 flex flex-wrap gap-2">
+                            <a href="{% url 'detalle_cita' cita.id %}" class="inline-flex items-center gap-2 rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-700">
+                                <i class="fas fa-eye"></i>
+                                Ver detalle
+                            </a>
+                            <a href="{% url 'asignar_veterinario_cita' cita.id %}" class="inline-flex items-center gap-2 rounded-lg border border-cyan-200 px-3 py-1.5 text-xs font-semibold text-cyan-700 hover:bg-cyan-50">
+                                <i class="fas fa-calendar-pen"></i>
+                                Ajustar horario
+                            </a>
+                        </div>
+                    </article>
+                {% endfor %}
+            </div>
+        </section>
+    {% endif %}
+
+    <section class="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 px-6 py-4">
+            <div>
+                <h3 class="text-lg font-semibold text-gray-900">Listado de citas</h3>
+                <p class="text-sm text-gray-500">Gestioná cada turno con acciones inmediatas.</p>
+            </div>
+            <div class="flex items-center gap-2 text-xs text-gray-500">
+                <span class="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 font-semibold text-blue-700"><i class="fas fa-circle"></i>Pendiente</span>
+                <span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 font-semibold text-emerald-700"><i class="fas fa-circle"></i>Programada</span>
+                <span class="inline-flex items-center gap-2 rounded-full bg-purple-50 px-3 py-1 font-semibold text-purple-700"><i class="fas fa-circle"></i>Atendida</span>
+                <span class="inline-flex items-center gap-2 rounded-full bg-rose-50 px-3 py-1 font-semibold text-rose-700"><i class="fas fa-circle"></i>Cancelada</span>
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                <thead class="bg-gray-50 text-xs font-semibold uppercase tracking-widest text-gray-500">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left">Estado</th>
+                        <th scope="col" class="px-6 py-3 text-left">Paciente</th>
+                        <th scope="col" class="px-6 py-3 text-left">Propietario</th>
+                        <th scope="col" class="px-6 py-3 text-left">Veterinario</th>
+                        <th scope="col" class="px-6 py-3 text-left">Fecha solicitada</th>
+                        <th scope="col" class="px-6 py-3 text-left">Horario confirmado</th>
+                        <th scope="col" class="px-6 py-3 text-left">Tipo</th>
+                        <th scope="col" class="px-6 py-3 text-left">Notas</th>
+                        <th scope="col" class="px-6 py-3 text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 bg-white">
+                    {% for cita in citas %}
+                        <tr class="hover:bg-gray-50/70">
+                            <td class="px-6 py-4">
+                                <span class="status-badge {% if cita.estado == 'pendiente' %}bg-blue-100 text-blue-700{% elif cita.estado == 'programada' %}bg-emerald-100 text-emerald-700{% elif cita.estado == 'atendida' %}bg-purple-100 text-purple-700{% else %}bg-rose-100 text-rose-700{% endif %}">
+                                    {{ cita.get_estado_display }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4">
+                                <p class="font-semibold text-gray-900">{{ cita.paciente.nombre }}</p>
+                                <p class="text-xs text-gray-500">{{ cita.paciente.especie }}{% if cita.paciente.raza %} · {{ cita.paciente.raza }}{% endif %}</p>
+                            </td>
+                            <td class="px-6 py-4">
+                                <p class="text-sm font-medium text-gray-800">{{ cita.paciente.propietario.user.get_full_name|default:cita.paciente.propietario.user.username }}</p>
+                                {% with telefono=cita.telefono_contacto %}
+                                    {% if telefono %}
+                                        <a href="https://wa.me/{{ telefono }}?text={{ cita.mensaje_whatsapp|urlencode }}" target="_blank" class="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700">
+                                            <i class="fab fa-whatsapp"></i>
+                                            Contactar
+                                        </a>
+                                    {% endif %}
+                                {% endwith %}
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-700">
+                                {% if cita.veterinario %}
+                                    {{ cita.veterinario.get_full_name|default:cita.veterinario.username }}
+                                {% else %}
+                                    <span class="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
+                                        <i class="fas fa-exclamation-circle"></i>
+                                        Sin asignar
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-700">{{ cita.fecha_solicitada|date:"d/m/Y" }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-700">
+                                {% if cita.fecha_hora %}
+                                    {{ cita.fecha_hora|date:"d/m/Y H:i" }} hs
+                                {% else %}
+                                    <span class="text-xs font-semibold text-amber-600">Horario pendiente</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-700">{{ cita.get_tipo_display }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-600">{{ cita.notas|default:"-"|truncatechars:80 }}</td>
+                            <td class="px-6 py-4">
+                                <div class="flex flex-col items-end gap-2">
+                                    <a href="{% url 'detalle_cita' cita.id %}" class="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100">
+                                        <i class="fas fa-eye"></i>
+                                        Ver
+                                    </a>
+                                    <a href="{% url 'asignar_veterinario_cita' cita.id %}" class="inline-flex items-center gap-2 rounded-lg border border-cyan-200 px-3 py-1.5 text-xs font-semibold text-cyan-700 hover:bg-cyan-50">
+                                        <i class="fas fa-pen"></i>
+                                        Modificar
+                                    </a>
+                                    {% if cita.estado == 'programada' %}
+                                        <form method="post" action="{% url 'listar_citas_admin' %}" class="w-full">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="cita_id" value="{{ cita.id }}">
+                                            <input type="hidden" name="action" value="marcar_atendida">
+                                            <input type="hidden" name="redirect" value="{{ redirect_target }}">
+                                            <button type="submit" class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700">
+                                                <i class="fas fa-check"></i>
+                                                Marcar atendida
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                    {% if cita.estado != 'cancelada' %}
+                                        <form method="post" action="{% url 'listar_citas_admin' %}" class="w-full">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="cita_id" value="{{ cita.id }}">
+                                            <input type="hidden" name="action" value="cancelar">
+                                            <input type="hidden" name="redirect" value="{{ redirect_target }}">
+                                            <button type="submit" class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700">
+                                                <i class="fas fa-ban"></i>
+                                                Cancelar
+                                            </button>
+                                        </form>
+                                    {% else %}
+                                        <form method="post" action="{% url 'listar_citas_admin' %}" class="w-full">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="cita_id" value="{{ cita.id }}">
+                                            <input type="hidden" name="action" value="reactivar">
+                                            <input type="hidden" name="redirect" value="{{ redirect_target }}">
+                                            <button type="submit" class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-600">
+                                                <i class="fas fa-undo"></i>
+                                                Reabrir cita
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="9" class="px-6 py-10 text-center text-sm text-gray-500">
+                                <i class="fas fa-calendar-check text-2xl"></i>
+                                <p class="mt-3">No se encontraron citas con los filtros actuales.</p>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+{% endblock %}

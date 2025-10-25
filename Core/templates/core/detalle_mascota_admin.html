@@ -1,0 +1,125 @@
+{% extends "core/base.html" %}
+
+{% block title %}Detalle de {{ paciente.nombre }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+
+    <!-- Header paciente -->
+    <div class="d-flex align-items-center mb-4">
+        <div class="me-3">
+            <i class="bi bi-paw-fill display-4 text-primary"></i>
+        </div>
+        <div>
+            <h2 class="mb-0">{{ paciente.nombre }} <small class="text-muted">({{ paciente.especie }})</small></h2>
+            <p class="text-secondary mb-0">Raza: {{ paciente.raza }} | Sexo: {{ paciente.sexo }}</p>
+        </div>
+    </div>
+
+    <!-- Propietario -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <i class="bi bi-person-fill"></i> Propietario
+        </div>
+        <div class="card-body">
+            {% if paciente.propietario %}
+                <h5>{{ paciente.propietario.user.get_full_name }}</h5>
+                <p class="mb-1"><i class="bi bi-telephone-fill me-1"></i>{{ paciente.propietario.telefono }}</p>
+                <p><i class="bi bi-envelope-fill me-1"></i>{{ paciente.propietario.user.email }}</p>
+            {% else %}
+                <p class="text-muted">Sin propietario registrado</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Citas -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-success text-white">
+            <i class="bi bi-calendar-check-fill"></i> Citas
+        </div>
+        <div class="card-body p-0">
+            {% if citas %}
+            <ul class="list-group list-group-flush">
+                {% for cita in citas %}
+                <li class="list-group-item d-flex justify-content-between align-items-center flex-column flex-md-row">
+                    <div>
+                        <strong>Fecha y Hora:</strong>
+                        {% if cita.fecha_hora %}
+                            {{ cita.fecha_hora|date:"M. d, Y, g:i a" }}
+                        {% else %}
+                            {{ cita.fecha_solicitada|date:"M. d, Y" }} (sin horario)
+                        {% endif %}
+                        <br>
+                        <strong>Estado:</strong> 
+                        {% if cita.estado == "atendida" %}
+                            <span class="badge bg-info text-dark">{{ cita.estado|capfirst }}</span>
+                        {% elif cita.estado == "programada" %}
+                            <span class="badge bg-warning text-dark">{{ cita.estado|capfirst }}</span>
+                        {% else %}
+                            <span class="badge bg-secondary">{{ cita.estado|capfirst }}</span>
+                        {% endif %}
+                        <br>
+                        <strong>Veterinario:</strong> 
+                        {% if cita.veterinario %}
+                            {{ cita.veterinario.username }}
+                        {% else %}
+                            <span class="text-muted">Sin asignar</span>
+                        {% endif %}
+                    </div>
+                    {% if cita.estado == "atendida" %}
+                        {% if cita.historial_relacionado %}
+                        <a href="{% url 'detalle_historial' cita.historial_relacionado.id %}" class="btn btn-sm btn-outline-primary mt-2 mt-md-0">
+                            <i class="bi bi-journal-text me-1"></i> Ver informe
+                        </a>
+                        {% else %}
+                        <a href="{% url 'detalle_cita' cita.id %}" class="btn btn-sm btn-outline-secondary mt-2 mt-md-0">
+                            <i class="bi bi-eye-fill me-1"></i> Ver detalle
+                        </a>
+                        {% endif %}
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+                <div class="p-3 text-center text-muted">No hay citas registradas</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Historial Médico -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-dark text-white">
+            <i class="bi bi-journal-medical"></i> Historial Médico
+        </div>
+        <div class="card-body p-0">
+            {% if historiales %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Diagnóstico</th>
+                            <th>Tratamiento</th>
+                            <th>Notas</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for hist in historiales %}
+                        <tr>
+                            <td>{{ hist.fecha|date:"M. d, Y" }}</td>
+                            <td>{{ hist.diagnostico }}</td>
+                            <td>{{ hist.tratamiento }}</td>
+                            <td>{% if hist.notas %}{{ hist.notas }}{% else %}-{% endif %}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+                <div class="p-3 text-center text-muted">No hay historial médico registrado</div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}

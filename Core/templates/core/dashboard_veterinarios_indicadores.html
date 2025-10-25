@@ -1,0 +1,291 @@
+{% extends "core/base.html" %}
+
+{% block title %}Indicadores estratégicos - Equipo veterinario{% endblock %}
+
+{% block content %}
+<section class="mb-5">
+    <div class="position-relative overflow-hidden rounded-4 border-0 shadow-sm text-white p-4 p-xl-5"
+         style="background: linear-gradient(135deg, #0f172a 0%, #1d4ed8 45%, #38bdf8 100%);">
+        <div class="row align-items-center g-4">
+            <div class="col-xl-7">
+                <span class="badge bg-white text-primary fw-semibold text-uppercase small mb-3">Inteligencia operativa</span>
+                <h1 class="display-6 fw-semibold mb-3">Indicadores estratégicos del equipo</h1>
+                <p class="lead text-white-50 mb-4">
+                    Analiza el flujo de solicitudes, tasa de resolución y desempeño individual para anticipar
+                    la demanda clínica y tomar decisiones informadas.
+                </p>
+                <div class="d-flex flex-wrap gap-3">
+                    <div class="bg-white bg-opacity-10 rounded-3 px-4 py-3">
+                        <p class="text-uppercase small text-white-50 mb-1">Periodo analizado</p>
+                        <p class="h5 fw-semibold mb-0">{{ resumen.inicio_periodo|date:"d/m" }} - {{ resumen.fin_periodo|date:"d/m" }}</p>
+                    </div>
+                    <div class="bg-white bg-opacity-10 rounded-3 px-4 py-3">
+                        <p class="text-uppercase small text-white-50 mb-1">Solicitudes totales</p>
+                        <p class="h5 fw-semibold mb-0">{{ resumen.total }}</p>
+                    </div>
+                    <div class="bg-white bg-opacity-10 rounded-3 px-4 py-3">
+                        <p class="text-uppercase small text-white-50 mb-1">Tasa de resolución</p>
+                        <p class="h5 fw-semibold mb-0">{{ resumen.tasa_resolucion }}%</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-5">
+                <div class="bg-white text-dark rounded-4 p-4 h-100">
+                    <div class="d-flex align-items-start justify-content-between mb-3">
+                        <div>
+                            <p class="text-uppercase text-muted small mb-1">Resumen rápido</p>
+                            <h5 class="mb-0">Indicadores clave</h5>
+                        </div>
+                        <span class="badge bg-primary-subtle text-primary">Último mes</span>
+                    </div>
+                    <dl class="row mb-0 small text-muted g-2">
+                        <dt class="col-7">Promedio de confirmación</dt>
+                        <dd class="col-5 text-end fw-semibold text-primary">{{ resumen.promedio_confirmacion }} días</dd>
+                        <dt class="col-7">Tasa de confirmación</dt>
+                        <dd class="col-5 text-end fw-semibold text-success">{{ resumen.tasa_confirmacion }}%</dd>
+                        <dt class="col-7">Tasa de cancelación</dt>
+                        <dd class="col-5 text-end fw-semibold text-danger">{{ resumen.tasa_cancelacion }}%</dd>
+                        <dt class="col-7">Solicitudes sin veterinario</dt>
+                        <dd class="col-5 text-end fw-semibold text-warning">{{ resumen.sin_veterinario }}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="mb-5">
+    <div class="row g-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-info-subtle text-info mb-3" style="width:48px;height:48px;">
+                        <i class="bi bi-hourglass-split"></i>
+                    </span>
+                    <p class="text-uppercase text-muted small mb-1">Pendientes</p>
+                    <h3 class="fw-semibold mb-0">{{ resumen.pendientes }}</h3>
+                    <p class="text-muted small mb-0">Solicitudes aguardando confirmación.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-primary-subtle text-primary mb-3" style="width:48px;height:48px;">
+                        <i class="bi bi-calendar2-check"></i>
+                    </span>
+                    <p class="text-uppercase text-muted small mb-1">Programadas</p>
+                    <h3 class="fw-semibold mb-0">{{ resumen.programadas }}</h3>
+                    <p class="text-muted small mb-0">Turnos con horario asignado.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-success-subtle text-success mb-3" style="width:48px;height:48px;">
+                        <i class="bi bi-clipboard2-check"></i>
+                    </span>
+                    <p class="text-uppercase text-muted small mb-1">Atendidas</p>
+                    <h3 class="fw-semibold mb-0">{{ resumen.atendidas }}</h3>
+                    <p class="text-muted small mb-0">Casos cerrados exitosamente.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-danger-subtle text-danger mb-3" style="width:48px;height:48px;">
+                        <i class="bi bi-slash-circle"></i>
+                    </span>
+                    <p class="text-uppercase text-muted small mb-1">Canceladas</p>
+                    <h3 class="fw-semibold mb-0">{{ resumen.canceladas }}</h3>
+                    <p class="text-muted small mb-0">Solicitudes anuladas en el período.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="mb-5">
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+                <div>
+                    <h2 class="h5 mb-1">Pulso diario</h2>
+                    <p class="text-muted small mb-0">Evolución de solicitudes y resoluciones en los últimos 7 días.</p>
+                </div>
+            </div>
+            {% if serie_diaria %}
+                <div class="table-responsive">
+                    <table class="table table-borderless align-middle mb-0">
+                        <thead class="text-muted text-uppercase small">
+                            <tr>
+                                <th>Día</th>
+                                <th class="text-center">Solicitadas</th>
+                                <th class="text-center">Programadas</th>
+                                <th class="text-center">Atendidas</th>
+                                <th class="text-center">Canceladas</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for dia in serie_diaria %}
+                                <tr>
+                                    <td class="fw-semibold">{{ dia.label }}</td>
+                                    <td class="text-center">
+                                        <span class="badge bg-primary-subtle text-primary">{{ dia.solicitadas }}</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-info-subtle text-info">{{ dia.programadas }}</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-success-subtle text-success">{{ dia.atendidas }}</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-danger-subtle text-danger">{{ dia.canceladas }}</span>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-muted mb-0">Sin actividad registrada en los últimos días.</p>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<section class="mb-5">
+    <div class="row g-4">
+        <div class="col-xl-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h2 class="h5 mb-0">Servicios más demandados</h2>
+                        <span class="badge bg-primary-subtle text-primary">Top 5</span>
+                    </div>
+                    {% if tipos_mas_demandados %}
+                        <ul class="list-group list-group-flush">
+                            {% for tipo in tipos_mas_demandados %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                    <span class="fw-semibold text-capitalize">{{ tipo.tipo }}</span>
+                                    <span class="badge bg-primary rounded-pill">{{ tipo.total }}</span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted mb-0">No hay suficientes datos para mostrar tendencias.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h2 class="h5 mb-0">Desempeño por veterinario</h2>
+                        <span class="badge bg-success-subtle text-success">Último mes</span>
+                    </div>
+                    {% if veterinarios_performance %}
+                        <ul class="list-group list-group-flush">
+                            {% for vet in veterinarios_performance %}
+                                <li class="list-group-item px-0">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <p class="fw-semibold mb-0">{{ vet.veterinario__first_name }} {{ vet.veterinario__last_name }}</p>
+                                            <p class="text-muted small mb-2">{{ vet.atendidas }} atendidas · {{ vet.programadas }} programadas · {{ vet.pendientes }} pendientes</p>
+                                        </div>
+                                        <span class="badge bg-success rounded-pill">{{ vet.total }}</span>
+                                    </div>
+                                    <div class="progress" style="height:6px;">
+                                        {% with total=vet.total %}
+                                            {% if total > 0 %}
+                                                {% widthratio vet.atendidas total 100 as avance %}
+                                                <div class="progress-bar bg-success" role="progressbar" style="width: {{ avance }}%;"></div>
+                                            {% endif %}
+                                        {% endwith %}
+                                    </div>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted mb-0">Aún no hay actividad registrada por el equipo.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h2 class="h5 mb-0">Propietarios recurrentes</h2>
+                        <span class="badge bg-warning-subtle text-warning">Top 5</span>
+                    </div>
+                    {% if propietarios_top %}
+                        <ul class="list-group list-group-flush">
+                            {% for owner in propietarios_top %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                    <span class="fw-semibold">{{ owner.paciente__propietario__user__first_name }} {{ owner.paciente__propietario__user__last_name }}</span>
+                                    <span class="badge bg-warning rounded-pill">{{ owner.total }}</span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted mb-0">Todavía no hay suficientes visitas repetidas.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section>
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+                <div>
+                    <h2 class="h5 mb-1">Agenda próxima</h2>
+                    <p class="text-muted small mb-0">Los próximos compromisos confirmados para el equipo.</p>
+                </div>
+                <a href="{% url 'dashboard_veterinarios' %}" class="btn btn-outline-primary btn-sm">
+                    <i class="bi bi-speedometer2 me-2"></i>Volver al panel principal
+                </a>
+            </div>
+            {% if agenda_semana %}
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead class="table-light text-uppercase small text-muted">
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Paciente</th>
+                                <th>Propietario</th>
+                                <th>Profesional</th>
+                                <th class="text-end">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cita in agenda_semana %}
+                                <tr>
+                                    <td>
+                                        <div class="fw-semibold">{{ cita.fecha_hora|date:"d/m/Y" }}</div>
+                                        <div class="small text-muted">{{ cita.fecha_hora|date:"H:i" }}</div>
+                                    </td>
+                                    <td>{{ cita.paciente.nombre }}</td>
+                                    <td>{{ cita.paciente.propietario.user.get_full_name|default:cita.paciente.propietario.user.username }}</td>
+                                    <td>{{ cita.veterinario.get_full_name|default:"Sin asignar" }}</td>
+                                    <td class="text-end">
+                                        <span class="badge bg-primary-subtle text-primary text-uppercase">{{ cita.get_estado_display }}</span>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-muted mb-0">El equipo no tiene citas confirmadas para la próxima semana.</p>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}

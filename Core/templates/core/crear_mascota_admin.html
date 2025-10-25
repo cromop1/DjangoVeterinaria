@@ -1,0 +1,81 @@
+{% extends "core/base.html" %}
+{% block title %}Registrar mascota - Administración{% endblock %}
+
+{% block content %}
+<section class="mb-4">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div>
+            <p class="text-uppercase text-muted small mb-1">Gestión de pacientes</p>
+            <h1 class="h3 mb-2">Añadir nueva mascota al padrón</h1>
+            <p class="text-muted mb-0">Completa los datos básicos para asociar la mascota a su familia y habilitar el seguimiento clínico.</p>
+        </div>
+        <a href="{% url 'listar_pacientes' %}" class="btn btn-outline-secondary rounded-pill">
+            <i class="bi bi-arrow-left me-2"></i>Volver al listado de pacientes
+        </a>
+    </div>
+</section>
+
+<section class="row g-4">
+    <div class="col-xl-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <form method="post" class="row g-4">
+                    {% csrf_token %}
+                    <div class="col-md-6">
+                        <label for="nombre" class="form-label fw-semibold">Nombre<span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-lg" id="nombre" name="nombre" placeholder="Nombre de la mascota" required value="{{ form_data.nombre|default:"" }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="especie" class="form-label fw-semibold">Especie<span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-lg" id="especie" name="especie" placeholder="Perro, gato, conejo..." required value="{{ form_data.especie|default:"" }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="raza" class="form-label fw-semibold">Raza</label>
+                        <input type="text" class="form-control" id="raza" name="raza" value="{{ form_data.raza|default:"" }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="sexo" class="form-label fw-semibold">Sexo<span class="text-danger">*</span></label>
+                        <select class="form-select" id="sexo" name="sexo" required>
+                            <option value="">Selecciona una opción</option>
+                            <option value="M" {% if form_data.sexo == "M" %}selected{% endif %}>Macho</option>
+                            <option value="F" {% if form_data.sexo == "F" %}selected{% endif %}>Hembra</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="fecha_nacimiento" class="form-label fw-semibold">Fecha de nacimiento<span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="fecha_nacimiento" name="fecha_nacimiento" required value="{{ form_data.fecha_nacimiento|default:"" }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="propietario" class="form-label fw-semibold">Propietario asignado<span class="text-danger">*</span></label>
+                        <select class="form-select" id="propietario" name="propietario" required>
+                            <option value="">Seleccioná un propietario</option>
+                            {% for p in propietarios %}
+                                <option value="{{ p.id }}" {% if form_data.propietario == p.id|stringformat:"s" %}selected{% endif %}>{{ p.user.get_full_name|default:p.user.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12 d-flex justify-content-end gap-3">
+                        <button type="reset" class="btn btn-light">Limpiar</button>
+                        <button type="submit" class="btn btn-primary px-4">Crear mascota</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-4">
+                <h2 class="h5 fw-semibold">Checklist rápido</h2>
+                <ul class="list-unstyled small text-muted mb-4">
+                    <li class="d-flex gap-2 mb-2"><i class="bi bi-check-circle-fill text-primary"></i>Confirma que el propietario exista previamente o créalo desde el módulo correspondiente.</li>
+                    <li class="d-flex gap-2 mb-2"><i class="bi bi-check-circle-fill text-primary"></i>El sexo se registra como "M" o "F" para mantener consistencia.</li>
+                    <li class="d-flex gap-2"><i class="bi bi-check-circle-fill text-primary"></i>La fecha de nacimiento es clave para programar vacunaciones y chequeos.</li>
+                </ul>
+                <div class="p-3 bg-primary-subtle rounded-3">
+                    <p class="small mb-0 text-primary d-flex gap-2"><i class="bi bi-info-circle"></i>Necesitás registrar un propietario? <a href="{% url 'crear_propietario_admin' %}" class="fw-semibold text-primary">Hazlo desde aquí</a>.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

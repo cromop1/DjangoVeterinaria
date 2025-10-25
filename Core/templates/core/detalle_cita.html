@@ -1,0 +1,93 @@
+{% extends "core/base.html" %}
+
+{% block title %}Detalle de Cita{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+
+    <!-- Header Cita -->
+    <div class="card mb-4 shadow-sm rounded-4 border-0" style="border-left: 6px solid #4e54c8;">
+        <div class="card-header bg-gradient fw-bold d-flex align-items-center">
+            <i class="bi bi-calendar-check-fill me-2 text-dark fs-4"></i>
+            <span class="text-dark fs-5">Detalle de Cita</span>
+        </div>
+        <div class="card-body">
+            <h5 class="card-title mb-3 text-dark">
+                <i class="bi bi-paw-fill me-1 text-secondary"></i>
+                {{ cita.paciente.nombre }} <small class="text-muted">({{ cita.paciente.especie }})</small>
+            </h5>
+            <p class="mb-1 text-dark"><i class="bi bi-clock-fill me-1 text-secondary"></i> <strong>Fecha y Hora:</strong>
+                {% if cita.fecha_hora %}
+                    {{ cita.fecha_hora|date:"M. d, Y, g:i a" }}
+                {% else %}
+                    {{ cita.fecha_solicitada|date:"M. d, Y" }} (sin horario confirmado)
+                {% endif %}
+            </p>
+            <p class="mb-1 text-dark"><i class="bi bi-person-badge-fill me-1 text-secondary"></i> <strong>Veterinario:</strong> {% if cita.veterinario %}{{ cita.veterinario.username }}{% else %}<span class="text-muted fst-italic">Sin asignar</span>{% endif %}</p>
+            <p class="mb-0 text-dark"><i class="bi bi-info-circle-fill me-1 text-secondary"></i> <strong>Estado:</strong> 
+                {% if cita.estado == "atendida" %}
+                    <span class="badge bg-success">{{ cita.estado|capfirst }}</span>
+                {% elif cita.estado == "programada" %}
+                    <span class="badge bg-warning text-dark">{{ cita.estado|capfirst }}</span>
+                {% else %}
+                    <span class="badge bg-secondary">{{ cita.estado|capfirst }}</span>
+                {% endif %}
+            </p>
+        </div>
+    </div>
+
+    <!-- Informe Médico -->
+    {% if historial %}
+    <div class="card shadow-sm rounded-4 mb-4 border-0" style="border-left: 6px solid #34ace0;">
+        <div class="card-header bg-gradient fw-bold d-flex align-items-center">
+            <i class="bi bi-journal-medical me-2 text-dark fs-4"></i>
+            <span class="text-dark fs-5">Informe Médico</span>
+        </div>
+        <div class="card-body">
+            {% if not informe_directo %}
+            <div class="alert alert-warning rounded-3 mb-4 d-flex align-items-center" role="alert">
+                <i class="bi bi-info-circle-fill me-2 fs-4 text-warning"></i>
+                <div>
+                    Este informe proviene de un registro general de {{ cita.paciente.nombre }} realizado el {{ historial.fecha|date:"d/m/Y H:i" }}.
+                    Si necesitás vincularlo específicamente a esta cita, podés editar el historial desde la ficha clínica.
+                </div>
+            </div>
+            {% endif %}
+            <div class="row mb-3">
+                <div class="col-md-6 mb-2">
+                    <p class="text-dark"><i class="bi bi-clipboard-fill me-1 text-secondary"></i><strong>Diagnóstico:</strong> {{ historial.diagnostico }}</p>
+                    <p class="text-dark"><i class="bi bi-bandaid-fill me-1 text-secondary"></i><strong>Tratamiento:</strong> {{ historial.tratamiento }}</p>
+                    <p class="text-dark"><i class="bi bi-file-text-fill me-1 text-secondary"></i><strong>Notas:</strong> {{ historial.notas|default:"-" }}</p>
+                </div>
+                <div class="col-md-6 mb-2">
+                    <p class="text-dark"><i class="bi bi-speedometer2 me-1 text-secondary"></i><strong>Peso:</strong> {{ historial.peso|default:"-" }}</p>
+                    <p class="text-dark"><i class="bi bi-thermometer-half me-1 text-secondary"></i><strong>Temperatura:</strong> {{ historial.temperatura|default:"-" }}</p>
+                    <p class="text-dark"><i class="bi bi-file-earmark-medical-fill me-1 text-secondary"></i><strong>Exámenes:</strong> {{ historial.examenes|default:"-" }}</p>
+                    {% if historial.sin_proximo_control %}
+                    <p class="text-dark"><i class="bi bi-calendar-x-fill me-1 text-secondary"></i><strong>Seguimiento:</strong> No requiere nuevo control programado.</p>
+                    {% elif historial.proximo_control %}
+                    <p class="text-dark"><i class="bi bi-calendar2-check-fill me-1 text-secondary"></i><strong>Próximo control:</strong> {{ historial.proximo_control }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% if historial.imagenes %}
+            <div class="mt-4 text-center">
+                <img src="{{ historial.imagenes.url }}" alt="Imagen Historial" class="img-fluid rounded-3 shadow-sm border" style="max-width: 480px;">
+                <div class="mt-3">
+                    <a href="{{ historial.imagenes.url }}" download class="btn btn-outline-primary">
+                        <i class="bi bi-download me-2"></i>Descargar estudio adjunto
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info rounded-4 d-flex align-items-center" role="alert">
+        <i class="bi bi-exclamation-circle-fill me-2 fs-4 text-primary"></i>
+        <div>Esta cita aún no ha sido atendida o no tiene informe médico registrado.</div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

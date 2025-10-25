@@ -1,0 +1,133 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Agendar Cita · Veterinaria{% endblock %}
+
+{% block extra_head %}
+    <style>
+        .appointment-page {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem 0;
+        }
+
+        .appointment-card {
+            background-color: #ffffff;
+            padding: 40px 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .appointment-card h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .appointment-card form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .appointment-card label {
+            font-weight: 500;
+            margin-bottom: 6px;
+            color: #555;
+        }
+
+        .appointment-card input[type="text"],
+        .appointment-card input[type="datetime-local"],
+        .appointment-card input[type="date"],
+        .appointment-card select,
+        .appointment-card textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+
+        .appointment-card input:focus,
+        .appointment-card select:focus,
+        .appointment-card textarea:focus {
+            outline: none;
+            border-color: #6c63ff;
+            box-shadow: 0 0 0 2px rgba(108, 99, 255, 0.2);
+        }
+
+        .appointment-card textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .appointment-card button {
+            padding: 12px;
+            background-color: #6c63ff;
+            color: #fff;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .appointment-card button:hover {
+            background-color: #5952d4;
+        }
+    </style>
+{% endblock %}
+
+{% block main_class %}container{% endblock %}
+
+{% block content %}
+<div class="appointment-page">
+    <div class="appointment-card">
+        <h2>Agendar cita</h2>
+        {% if messages %}
+            <div class="mt-4 space-y-2">
+                {% for message in messages %}
+                    <div class="p-3 rounded-lg text-sm {% if message.tags == 'success' %}bg-green-50 text-green-700 border border-green-200{% else %}bg-red-50 text-red-700 border border-red-200{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        <form method="post">
+            {% csrf_token %}
+
+            <div>
+                <label for="paciente">Mascota</label>
+                <select name="paciente" id="paciente" required>
+                    {% for m in mascotas %}
+                        <option value="{{ m.id }}" {% if paciente_seleccionado and paciente_seleccionado.id == m.id %}selected{% endif %}>
+                            {{ m.nombre }} ({{ m.especie }})
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="rounded-md bg-indigo-50 border border-indigo-200 p-3 text-sm text-indigo-700">
+                Elige el día que prefieras y nuestro equipo administrativo se comunicará contigo por WhatsApp para definir el horario.
+            </div>
+
+            <div>
+                <label for="fecha_solicitada">Día preferido</label>
+                <input type="date" name="fecha_solicitada" id="fecha_solicitada" value="{{ request.POST.fecha_solicitada }}" required>
+            </div>
+
+            <div>
+                <label for="notas">Notas</label>
+                <textarea name="notas" id="notas"></textarea>
+            </div>
+
+            <button type="submit">Agendar cita</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

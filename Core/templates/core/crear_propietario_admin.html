@@ -1,0 +1,76 @@
+{% extends "core/base.html" %}
+{% block title %}Crear propietario - Administración{% endblock %}
+
+{% block content %}
+<section class="mb-4">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div>
+            <p class="text-uppercase text-muted small mb-1">Directorio de clientes</p>
+            <h1 class="h3 mb-2">Registrar nuevo propietario</h1>
+            <p class="text-muted mb-0">Genera el usuario para que pueda gestionar sus mascotas, citas y compras en la plataforma.</p>
+        </div>
+        <a href="{% url 'listar_usuarios' %}" class="btn btn-outline-secondary rounded-pill">
+            <i class="bi bi-arrow-left me-2"></i>Volver al listado de usuarios
+        </a>
+    </div>
+</section>
+
+<section class="row g-4">
+    <div class="col-xl-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <form method="post" class="row g-4">
+                    {% csrf_token %}
+                    <div class="col-md-6">
+                        <label for="first_name" class="form-label fw-semibold">Nombre<span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-lg" id="first_name" name="first_name" placeholder="Nombre" required value="{{ form_data.first_name|default:"" }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="last_name" class="form-label fw-semibold">Apellido<span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-lg" id="last_name" name="last_name" placeholder="Apellido" required value="{{ form_data.last_name|default:"" }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="username" class="form-label fw-semibold">Usuario<span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="username" name="username" placeholder="Identificador único" required value="{{ form_data.username|default:"" }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="email" class="form-label fw-semibold">Email<span class="text-danger">*</span></label>
+                        <input type="email" class="form-control" id="email" name="email" placeholder="correo@ejemplo.com" required value="{{ form_data.email|default:"" }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="telefono" class="form-label fw-semibold">Teléfono</label>
+                        <input type="text" class="form-control" id="telefono" name="telefono" placeholder="Opcional" value="{{ form_data.telefono|default:"" }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="direccion" class="form-label fw-semibold">Dirección</label>
+                        <input type="text" class="form-control" id="direccion" name="direccion" placeholder="Calle, número, ciudad" value="{{ form_data.direccion|default:"" }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="password" class="form-label fw-semibold">Contraseña temporal<span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="password" name="password" placeholder="Mínimo 8 caracteres" required>
+                    </div>
+                    <div class="col-12 d-flex justify-content-end gap-3">
+                        <button type="reset" class="btn btn-light">Limpiar</button>
+                        <button type="submit" class="btn btn-primary px-4">Crear propietario</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-4">
+                <h2 class="h5 fw-semibold">Buenas prácticas</h2>
+                <ul class="list-unstyled small text-muted mb-4">
+                    <li class="d-flex gap-2 mb-2"><i class="bi bi-check-circle-fill text-primary"></i>El usuario se crea con rol de propietario y queda listo para operar en la tienda y las citas.</li>
+                    <li class="d-flex gap-2 mb-2"><i class="bi bi-check-circle-fill text-primary"></i>Comparte la contraseña temporal para que pueda cambiarla desde su perfil.</li>
+                    <li class="d-flex gap-2"><i class="bi bi-check-circle-fill text-primary"></i>Si no conoces el teléfono o dirección, puedes completarlo más adelante.</li>
+                </ul>
+                <div class="p-3 bg-success-subtle rounded-3">
+                    <p class="small mb-0 text-success d-flex gap-2"><i class="bi bi-people"></i>Una vez creado podrás asociar mascotas desde la sección de pacientes.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
