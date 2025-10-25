@@ -337,7 +337,49 @@
             <!-- Veterinarian dashboard with modern design -->
             <div class="mb-8">
                 <h2 class="text-2xl font-bold text-gray-900 mb-6">Panel del Veterinario</h2>
-                
+
+                {% if mi_sucursal %}
+                    <div class="mb-6">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-blue-100 bg-blue-50 p-5">
+                            <div class="flex items-start gap-3">
+                                <span class="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-white text-xl shadow-sm">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                </span>
+                                <div>
+                                    <p class="text-xs font-semibold uppercase tracking-wider text-blue-600">Sucursal asignada</p>
+                                    <p class="text-lg font-bold text-blue-900">{{ mi_sucursal.nombre }}</p>
+                                    {% if mi_sucursal.direccion %}
+                                        <p class="text-sm text-blue-700">
+                                            {{ mi_sucursal.direccion }}
+                                            {% if mi_sucursal.ciudad %}
+                                                <span class="text-blue-500">· {{ mi_sucursal.ciudad }}</span>
+                                            {% endif %}
+                                        </p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% if mi_sucursal.telefono %}
+                                <a href="tel:{{ mi_sucursal.telefono }}" class="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm ring-1 ring-blue-100 hover:bg-blue-100 transition-colors">
+                                    <i class="fas fa-phone"></i>
+                                    {{ mi_sucursal.telefono }}
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="mb-6">
+                        <div class="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-800">
+                            <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-amber-500 text-white shadow">
+                                <i class="fas fa-info"></i>
+                            </span>
+                            <div>
+                                <p class="text-sm font-semibold">Aún no tienes una sucursal asignada.</p>
+                                <p class="text-sm">Comunícate con el equipo administrativo para vincular tu perfil a la sede correspondiente.</p>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <!-- My Appointments -->
                     <div class="bg-white rounded-xl shadow-sm p-6">

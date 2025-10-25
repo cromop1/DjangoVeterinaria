@@ -280,6 +280,12 @@ def dashboard(request):
             else Producto.objects.none()
         )
     elif user.rol == "VET":
+        mi_sucursal = getattr(user, "sucursal", None)
+        if mi_sucursal is None:
+            messages.warning(
+                request,
+                "Tu perfil aún no tiene una sucursal asignada. Comunícate con un administrador para actualizar tus datos.",
+            )
         context["mis_citas"] = (
             Cita.objects.filter(veterinario=user)
             .select_related(
@@ -290,6 +296,7 @@ def dashboard(request):
         context["mis_historiales"] = HistorialMedico.objects.filter(
             veterinario=user
         ).order_by("-fecha")
+        context["mi_sucursal"] = mi_sucursal
     elif user.rol == "OWNER":
         productos_disponibles = _producto_table_available()
         propietario = (
@@ -376,10 +383,25 @@ def dashboard(request):
             else Producto.objects.none()
         )
     elif user.rol == "ADMIN_OP":
-        context["todas_citas"] = Cita.objects.all().order_by(
-            "-fecha_solicitada", "-fecha_hora"
+        if not user.is_superuser and not getattr(user, "sucursal_id", None):
+            messages.warning(
+                request,
+                "Asigna una sucursal a tu perfil para comenzar a gestionar la operación.",
+            )
+
+        context["todas_citas"] = _filtrar_por_sucursal(
+            Cita.objects.select_related(
+                "paciente",
+                "paciente__propietario__user",
+                "veterinario",
+            ).order_by("-fecha_solicitada", "-fecha_hora"),
+            user,
         )
-        context["todos_pacientes"] = Paciente.objects.all()
+        context["todos_pacientes"] = _filtrar_por_sucursal(
+            Paciente.objects.select_related("propietario__user").order_by("nombre"),
+            user,
+            field_name="cita__sucursal",
+        ).distinct()
 
     return render(request, "core/dashboard.html", context)
 
@@ -2059,6 +2081,10 @@ def dashboard_veterinarios_indicadores(request):
     inicio_periodo = (ahora - timedelta(days=29)).date()
     fin_periodo = ahora.date()
 
+    sucursal_activa = None
+    if not request.user.is_superuser and request.user.rol in _roles_con_sucursal():
+        sucursal_activa = getattr(request.user, "sucursal", None)
+
     citas_totales = _filtrar_por_sucursal(Cita.objects.all(), request.user)
 
     citas_periodo = (
@@ -2188,6 +2214,7 @@ def dashboard_veterinarios_indicadores(request):
         "veterinarios_performance": veterinarios_performance,
         "propietarios_top": propietarios_top,
         "agenda_semana": agenda_semana,
+        "sucursal_activa": sucursal_activa,
     }
 
     return render(
