@@ -21,7 +21,7 @@
         <div class="col-lg-8">
             <div class="card border-0 shadow-sm">
                 <div class="card-body p-4">
-                    <form method="post" class="row g-4">
+                    <form method="post" enctype="multipart/form-data" class="row g-4">
                         {% csrf_token %}
                         <div class="col-md-6">
                             <label for="nombre" class="form-label fw-semibold">Nombre de la mascota<span class="text-danger">*</span></label>
@@ -46,6 +46,17 @@
                         <div class="col-md-6">
                             <label for="fecha_nacimiento" class="form-label fw-semibold">Fecha de nacimiento<span class="text-danger">*</span></label>
                             <input type="date" class="form-control" id="fecha_nacimiento" name="fecha_nacimiento" required value="{{ form_data.fecha_nacimiento|default:"" }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="foto" class="form-label fw-semibold">Foto de perfil</label>
+                            <input type="file" class="form-control" id="foto" name="foto" accept="image/*">
+                            <div class="form-text">Formatos admitidos: JPG, PNG o WebP. Tamaño máximo recomendado 5 MB.</div>
+                            {% if foto_subida %}
+                                <div class="alert alert-info d-flex align-items-center gap-2 mt-3 py-2 px-3">
+                                    <i class="bi bi-image"></i>
+                                    <span class="small">Imagen seleccionada: {{ foto_subida.name }}</span>
+                                </div>
+                            {% endif %}
                         </div>
                         <div class="col-12">
                             <div class="d-flex flex-wrap gap-3 justify-content-end">

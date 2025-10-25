@@ -24,9 +24,17 @@
         <div class="card h-100 shadow-sm">
             <div class="card-body d-flex flex-column">
                 <div class="d-flex align-items-center gap-3 mb-3">
-                    <div class="rounded-circle bg-primary-subtle text-primary-emphasis d-flex align-items-center justify-content-center"
-                         style="width: 56px; height: 56px; font-size: 1.75rem;">
-                        {% if mascota.especie|lower == "gato" %}🐱{% elif mascota.especie|lower == "ave" %}🦜{% else %}🐾{% endif %}
+                    <div class="rounded-circle overflow-hidden flex-shrink-0"
+                         style="width: 56px; height: 56px;">
+                        {% if mascota.foto %}
+                            <img src="{{ mascota.foto.url }}" alt="Foto de {{ mascota.nombre }}"
+                                 class="w-100 h-100 object-fit-cover">
+                        {% else %}
+                            <div class="w-100 h-100 bg-primary-subtle text-primary-emphasis d-flex align-items-center justify-content-center"
+                                 style="font-size: 1.75rem;">
+                                {% if mascota.especie|lower == "gato" %}🐱{% elif mascota.especie|lower == "ave" %}🦜{% else %}🐾{% endif %}
+                            </div>
+                        {% endif %}
                     </div>
                     <div>
                         <h2 class="h5 mb-0">{{ mascota.nombre }}</h2>

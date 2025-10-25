@@ -19,7 +19,7 @@
     <div class="col-xl-8">
         <div class="card border-0 shadow-sm">
             <div class="card-body p-4">
-                <form method="post" class="row g-4">
+                <form method="post" enctype="multipart/form-data" class="row g-4">
                     {% csrf_token %}
                     <div class="col-md-6">
                         <label for="nombre" class="form-label fw-semibold">Nombre<span class="text-danger">*</span></label>
@@ -53,6 +53,14 @@
                                 <option value="{{ p.id }}" {% if form_data.propietario == p.id|stringformat:"s" %}selected{% endif %}>{{ p.user.get_full_name|default:p.user.username }}</option>
                             {% endfor %}
                         </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="foto" class="form-label fw-semibold">Foto de perfil</label>
+                        <input type="file" class="form-control" id="foto" name="foto" accept="image/*">
+                        <div class="form-text">Opcional. Permitidos JPG, PNG o WebP.</div>
+                        {% if foto_subida %}
+                            <p class="small text-success mt-2"><i class="bi bi-check-circle-fill me-1"></i>Archivo seleccionado: {{ foto_subida.name }}</p>
+                        {% endif %}
                     </div>
                     <div class="col-12 d-flex justify-content-end gap-3">
                         <button type="reset" class="btn btn-light">Limpiar</button>

@@ -823,6 +823,7 @@ def registrar_mascota(request):
 
     propietario = get_object_or_404(Propietario, user=request.user)
     form_data = request.POST if request.method == "POST" else {}
+    foto_subida = None
 
     if request.method == "POST":
         has_error = False
@@ -831,6 +832,7 @@ def registrar_mascota(request):
         raza = request.POST.get("raza")
         sexo = request.POST.get("sexo")
         fecha_nacimiento = request.POST.get("fecha_nacimiento")
+        foto_subida = request.FILES.get("foto")
 
         fecha_obj = None
         if fecha_nacimiento:
@@ -851,6 +853,7 @@ def registrar_mascota(request):
                 sexo=sexo,
                 fecha_nacimiento=fecha_obj,
                 propietario=propietario,
+                foto=foto_subida,
             )
             messages.success(
                 request, f"Mascota {nombre} registrada correctamente ✅"
@@ -860,7 +863,7 @@ def registrar_mascota(request):
     return render(
         request,
         "core/registrar_mascota.html",
-        {"form_data": form_data},
+        {"form_data": form_data, "foto_subida": foto_subida},
     )
 
 
@@ -1772,6 +1775,8 @@ def crear_mascota_admin(request):
     propietarios = Propietario.objects.all()
     form_data = request.POST if request.method == "POST" else {}
 
+    foto_subida = None
+
     if request.method == "POST":
         has_error = False
         nombre = request.POST.get("nombre")
@@ -1780,6 +1785,7 @@ def crear_mascota_admin(request):
         sexo = request.POST.get("sexo")
         fecha_nacimiento = request.POST.get("fecha_nacimiento")
         propietario_id = request.POST.get("propietario")
+        foto_subida = request.FILES.get("foto")
 
         propietario = None
         if propietario_id:
@@ -1808,6 +1814,7 @@ def crear_mascota_admin(request):
                 sexo=sexo,
                 fecha_nacimiento=fecha_obj,
                 propietario=propietario,
+                foto=foto_subida,
             )
             messages.success(request, "Mascota creada correctamente ✅")
             return redirect("dashboard")
@@ -1815,7 +1822,11 @@ def crear_mascota_admin(request):
     return render(
         request,
         "core/crear_mascota_admin.html",
-        {"propietarios": propietarios, "form_data": form_data},
+        {
+            "propietarios": propietarios,
+            "form_data": form_data,
+            "foto_subida": foto_subida,
+        },
     )
 
 
