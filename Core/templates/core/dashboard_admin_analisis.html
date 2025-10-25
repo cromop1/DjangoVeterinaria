@@ -97,7 +97,7 @@
             </div>
             <form method="get" class="flex items-center gap-3 text-sm">
                 {% for key, value in request.GET.items %}
-                    {% if key not in ('inventario_periodo',) %}
+                    {% if key != 'inventario_periodo' %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                     {% endif %}
                 {% endfor %}
