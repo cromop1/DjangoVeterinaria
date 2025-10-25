@@ -630,22 +630,12 @@ def dashboard_admin_analisis(request):
     if sucursal_seleccionada is not None:
         citas_base = citas_base.filter(sucursal=sucursal_seleccionada)
 
-    total_citas = citas_base.count()
-    total_pendientes = citas_base.filter(estado="pendiente").count()
-    total_programadas = citas_base.filter(estado="programada").count()
-    total_atendidas = citas_base.filter(estado="atendida").count()
-    total_canceladas = citas_base.filter(estado="cancelada").count()
-
     farmacos_qs = _filtrar_por_sucursal(
         Farmaco.objects.select_related("sucursal"),
         usuario,
     )
     if sucursal_seleccionada is not None:
         farmacos_qs = farmacos_qs.filter(sucursal=sucursal_seleccionada)
-
-    total_farmacos_catalogados = farmacos_qs.count()
-    total_stock = farmacos_qs.aggregate(total=Sum("stock")).get("total") or 0
-    stock_critico = farmacos_qs.filter(stock__lte=5).count()
 
     farmacos_utilizados_qs = _filtrar_por_sucursal(
         CitaFarmaco.objects.select_related(
@@ -662,15 +652,32 @@ def dashboard_admin_analisis(request):
             cita__sucursal=sucursal_seleccionada
         )
 
+    periodos_inventario = {
+        "dia": {"label": "Últimas 24 horas", "dias": 1},
+        "semana": {"label": "Últimos 7 días", "dias": 7},
+        "mes": {"label": "Últimos 30 días", "dias": 30},
+    }
+    inventario_periodo = request.GET.get("inventario_periodo", "mes")
+    if inventario_periodo not in periodos_inventario:
+        inventario_periodo = "mes"
+    inventario_periodo_info = periodos_inventario[inventario_periodo]
+    inicio_periodo_inventario = timezone.now() - timedelta(
+        days=inventario_periodo_info["dias"]
+    )
+
+    farmacos_periodo_qs = farmacos_utilizados_qs.filter(
+        registrado__gte=inicio_periodo_inventario
+    )
+
     total_farmacos_utilizados = (
-        farmacos_utilizados_qs.aggregate(total=Sum("cantidad")).get("total") or 0
+        farmacos_periodo_qs.aggregate(total=Sum("cantidad")).get("total") or 0
     )
 
     categoria_labels = []
     categoria_data = []
     categoria_lookup = dict(Farmaco.Categoria.choices)
     for registro in (
-        farmacos_utilizados_qs.values("farmaco__categoria")
+        farmacos_periodo_qs.values("farmaco__categoria")
         .annotate(total=Sum("cantidad"))
         .order_by("-total")
     ):
@@ -681,7 +688,7 @@ def dashboard_admin_analisis(request):
 
     top_farmacos = []
     for registro in (
-        farmacos_utilizados_qs.values(
+        farmacos_periodo_qs.values(
             "farmaco__id",
             "farmaco__nombre",
             "farmaco__categoria",
@@ -706,48 +713,9 @@ def dashboard_admin_analisis(request):
             }
         )
 
-    hoy = timezone.localdate()
-    inicio_semana = hoy - timedelta(days=hoy.weekday())
-    serie_semanal = []
-    for i in range(5, -1, -1):
-        inicio_periodo = inicio_semana - timedelta(weeks=i)
-        fin_periodo = inicio_periodo + timedelta(days=6)
-        serie_semanal.append(
-            {
-                "inicio": inicio_periodo,
-                "fin": fin_periodo,
-                "label": f"{inicio_periodo:%d/%m} - {fin_periodo:%d/%m}",
-                "pendiente": 0,
-                "programada": 0,
-                "atendida": 0,
-                "cancelada": 0,
-            }
-        )
-
-    semana_lookup = {item["inicio"]: item for item in serie_semanal}
-    fecha_limite = serie_semanal[0]["inicio"] if serie_semanal else hoy
-    for registro in (
-        citas_base.filter(fecha_solicitada__gte=fecha_limite)
-        .values("fecha_solicitada", "estado")
-        .iterator()
-    ):
-        fecha = registro["fecha_solicitada"]
-        if isinstance(fecha, datetime):
-            fecha = fecha.date()
-        inicio_periodo = fecha - timedelta(days=fecha.weekday())
-        bucket = semana_lookup.get(inicio_periodo)
-        if bucket and registro["estado"] in bucket:
-            bucket[registro["estado"]] += 1
-
-    grafico_labels = [item["label"] for item in serie_semanal]
-    grafico_pendientes = [item["pendiente"] for item in serie_semanal]
-    grafico_programadas = [item["programada"] for item in serie_semanal]
-    grafico_atendidas = [item["atendida"] for item in serie_semanal]
-    grafico_canceladas = [item["cancelada"] for item in serie_semanal]
-
-    propietarios_qs = (
-        Propietario.objects.select_related("user")
-        .order_by("user__first_name", "user__last_name", "user__username")
+    propietarios_qs = Propietario.objects.select_related("user")
+    propietarios_qs = propietarios_qs.order_by(
+        "user__first_name", "user__last_name", "user__username"
     )
     if sucursal_seleccionada is not None:
         propietarios_qs = propietarios_qs.filter(
@@ -758,38 +726,48 @@ def dashboard_admin_analisis(request):
             paciente__cita__sucursal_id=usuario.sucursal_id
         ).distinct()
 
+    propietarios_farmacos = list(
+        farmacos_qs.order_by("nombre").values("id", "nombre")[:150]
+    )
+
+    expediente_periodos = {
+        "todo": {"label": "Todo el historial", "dias": None},
+        "30": {"label": "Últimos 30 días", "dias": 30},
+        "90": {"label": "Últimos 90 días", "dias": 90},
+        "365": {"label": "Últimos 12 meses", "dias": 365},
+    }
+    expediente_periodo = request.GET.get("expediente_periodo", "todo")
+    if expediente_periodo not in expediente_periodos:
+        expediente_periodo = "todo"
+
+    propietario_q = (request.GET.get("propietario_q") or "").strip()
+    propietario_farmaco = request.GET.get("propietario_farmaco", "").strip()
+
+    if propietario_q:
+        propietarios_qs = propietarios_qs.filter(
+            Q(user__first_name__icontains=propietario_q)
+            | Q(user__last_name__icontains=propietario_q)
+            | Q(user__username__icontains=propietario_q)
+            | Q(user__email__icontains=propietario_q)
+            | Q(telefono__icontains=propietario_q)
+            | Q(paciente__nombre__icontains=propietario_q)
+        ).distinct()
+
+    dias_periodo_expediente = expediente_periodos[expediente_periodo]["dias"]
+    if dias_periodo_expediente:
+        inicio_expediente = timezone.now() - timedelta(days=dias_periodo_expediente)
+        propietarios_qs = propietarios_qs.filter(
+            Q(paciente__cita__fecha_solicitada__gte=inicio_expediente)
+            | Q(paciente__cita__fecha_hora__gte=inicio_expediente)
+        ).distinct()
+
+    if propietario_farmaco.isdigit():
+        propietarios_qs = propietarios_qs.filter(
+            paciente__cita__administraciones_farmacos__farmaco_id=int(propietario_farmaco)
+        ).distinct()
+
     total_propietarios = propietarios_qs.count()
     propietarios_para_descarga = list(propietarios_qs[:25])
-
-    citas_semana = citas_base.filter(
-        fecha_solicitada__gte=hoy - timedelta(days=6)
-    ).count()
-    citas_mes = citas_base.filter(
-        fecha_solicitada__gte=hoy - timedelta(days=29)
-    ).count()
-
-    veterinarios_qs = _filtrar_por_sucursal(
-        User.objects.filter(rol="VET", activo=True, is_active=True),
-        usuario,
-    )
-    if sucursal_seleccionada is not None:
-        veterinarios_qs = veterinarios_qs.filter(sucursal=sucursal_seleccionada)
-    total_veterinarios = veterinarios_qs.count()
-
-    promedios = {
-        "citas_por_veterinario": round(total_atendidas / total_veterinarios, 1)
-        if total_veterinarios
-        else 0,
-        "farmacos_por_cita": round(
-            total_farmacos_utilizados / total_atendidas, 2
-        )
-        if total_atendidas
-        else 0,
-        "citas_semana": citas_semana,
-        "citas_mes": citas_mes,
-        "veterinarios_activos": total_veterinarios,
-        "propietarios_activos": total_propietarios,
-    }
 
     rendimiento_veterinarios = []
     for registro in (
@@ -824,22 +802,23 @@ def dashboard_admin_analisis(request):
             }
         )
 
-    tasa_atencion = (
-        round((total_atendidas / total_citas) * 100, 1) if total_citas else 0
+    propietarios_inventario_periodo = (
+        farmacos_periodo_qs.values("cita__paciente__propietario_id")
+        .exclude(cita__paciente__propietario_id__isnull=True)
+        .distinct()
+        .count()
+    )
+    veterinarios_inventario_periodo = (
+        farmacos_periodo_qs.values("cita__veterinario_id")
+        .exclude(cita__veterinario_id__isnull=True)
+        .distinct()
+        .count()
     )
 
-    resumen_general = {
-        "total_citas": total_citas,
-        "pendientes": total_pendientes,
-        "programadas": total_programadas,
-        "atendidas": total_atendidas,
-        "canceladas": total_canceladas,
-        "tasa_atencion": tasa_atencion,
-        "total_propietarios": total_propietarios,
-        "farmacos_catalogados": total_farmacos_catalogados,
-        "stock_total": total_stock,
-        "stock_critico": stock_critico,
-        "farmacos_utilizados": total_farmacos_utilizados,
+    resumen_inventario_periodo = {
+        "dispensaciones": total_farmacos_utilizados,
+        "propietarios": propietarios_inventario_periodo,
+        "veterinarios": veterinarios_inventario_periodo,
     }
 
     categorias_destacadas = [
@@ -861,22 +840,24 @@ def dashboard_admin_analisis(request):
         "sucursal_seleccionada": sucursal_seleccionada,
         "sucursal_param": sucursal_param,
         "mostrar_opcion_todas": mostrar_opcion_todas,
-        "resumen_general": resumen_general,
-        "promedios": promedios,
         "top_farmacos": top_farmacos,
         "categorias_destacadas": categorias_destacadas,
         "propietarios_para_descarga": propietarios_para_descarga,
         "propietarios_total": total_propietarios,
         "rendimiento_veterinarios": rendimiento_veterinarios,
         "momento_actual": momento_actual,
-        "grafico_citas_labels": json.dumps(grafico_labels),
-        "grafico_citas_pendientes": json.dumps(grafico_pendientes),
-        "grafico_citas_programadas": json.dumps(grafico_programadas),
-        "grafico_citas_atendidas": json.dumps(grafico_atendidas),
-        "grafico_citas_canceladas": json.dumps(grafico_canceladas),
         "grafico_categorias_labels": json.dumps(categoria_labels),
         "grafico_categorias_data": json.dumps(categoria_data),
         "export_sucursal_param": export_sucursal_param,
+        "inventario_periodo": inventario_periodo,
+        "inventario_periodos": periodos_inventario,
+        "inventario_periodo_label": inventario_periodo_info["label"],
+        "resumen_inventario_periodo": resumen_inventario_periodo,
+        "expediente_periodo": expediente_periodo,
+        "expediente_periodos": expediente_periodos,
+        "propietario_q": propietario_q,
+        "propietario_farmaco": propietario_farmaco,
+        "propietarios_farmacos": propietarios_farmacos,
     }
 
     return render(request, "core/dashboard_admin_analisis.html", context)
