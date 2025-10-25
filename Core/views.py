@@ -2388,16 +2388,52 @@ def inventario_farmacos_veterinario(request):
 
     inventario = _inventario_por_sucursal(sucursal)
     resumen = inventario["resumen"]
+    farmacos = inventario["farmacos"]
+
+    query = request.GET.get("q", "").strip()
+    categoria = request.GET.get("categoria", "").strip()
+
+    farmacos_filtrados = farmacos
+    if query:
+        termino = query.lower()
+        farmacos_filtrados = [
+            farmaco
+            for farmaco in farmacos_filtrados
+            if termino in (farmaco.nombre or "").lower()
+            or termino in (farmaco.descripcion or "").lower()
+        ]
+
+    if categoria:
+        farmacos_filtrados = [
+            farmaco for farmaco in farmacos_filtrados if farmaco.categoria == categoria
+        ]
+
+    categorias_filtradas = []
+    for codigo, etiqueta in Farmaco.Categoria.choices:
+        items = [farmaco for farmaco in farmacos_filtrados if farmaco.categoria == codigo]
+        if items:
+            categorias_filtradas.append(
+                {
+                    "codigo": codigo,
+                    "nombre": etiqueta,
+                    "total_items": len(items),
+                    "total_stock": sum(item.stock for item in items),
+                    "items": items,
+                }
+            )
 
     contexto = {
         "sucursal": sucursal,
-        "inventario": resumen["categorias"],
+        "inventario": categorias_filtradas,
         "totales": {
-            "total_items": resumen["total_items"],
-            "total_stock": resumen["total_stock"],
+            "total_items": len(farmacos_filtrados),
+            "total_stock": sum(item.stock for item in farmacos_filtrados),
             "ultima_actualizacion": resumen["ultima_actualizacion"],
         },
-        "criticos": resumen["criticos"],
+        "criticos": [farmaco for farmaco in farmacos_filtrados if farmaco.stock <= 5],
+        "categorias_disponibles": Farmaco.Categoria.choices,
+        "filtros": {"q": query, "categoria": categoria},
+        "hay_filtros": bool(query or categoria),
     }
 
     return render(request, "core/inventario_farmacos_vet.html", contexto)
