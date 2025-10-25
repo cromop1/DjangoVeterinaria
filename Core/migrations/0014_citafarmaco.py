@@ -71,21 +71,42 @@ class Migration(migrations.Migration):
                 "unique_together": {("cita", "farmaco")},
             },
         ),
-        migrations.RunPython(copiar_relaciones_existentes, migrations.RunPython.noop),
-        migrations.RemoveField(
-            model_name="cita",
-            name="farmacos_utilizados",
+        migrations.RunPython(
+            copiar_relaciones_existentes, migrations.RunPython.noop
         ),
-        migrations.AddField(
-            model_name="cita",
-            name="farmacos_utilizados",
-            field=models.ManyToManyField(
-                blank=True,
-                help_text="Medicamentos del inventario utilizados durante la atención.",
-                related_name="citas_utilizadas",
-                through="Core.CitaFarmaco",
-                through_fields=("cita", "farmaco"),
-                to="Core.farmaco",
-            ),
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunSQL(
+                    sql='DROP TABLE IF EXISTS "Core_cita_farmacos_utilizados"',
+                    reverse_sql='''
+CREATE TABLE "Core_cita_farmacos_utilizados" (
+    "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "cita_id" integer NOT NULL REFERENCES "Core_cita" ("id") DEFERRABLE INITIALLY DEFERRED,
+    "farmaco_id" integer NOT NULL REFERENCES "Core_farmaco" ("id") DEFERRABLE INITIALLY DEFERRED
+);
+CREATE UNIQUE INDEX "Core_cita_farmacos_utilizados_cita_id_farmaco_id_uniq" ON "Core_cita_farmacos_utilizados" ("cita_id", "farmaco_id");
+CREATE INDEX "Core_cita_farmacos_utilizados_cita_id" ON "Core_cita_farmacos_utilizados" ("cita_id");
+CREATE INDEX "Core_cita_farmacos_utilizados_farmaco_id" ON "Core_cita_farmacos_utilizados" ("farmaco_id");
+                    ''',
+                )
+            ],
+            state_operations=[
+                migrations.RemoveField(
+                    model_name="cita",
+                    name="farmacos_utilizados",
+                ),
+                migrations.AddField(
+                    model_name="cita",
+                    name="farmacos_utilizados",
+                    field=models.ManyToManyField(
+                        blank=True,
+                        help_text="Medicamentos del inventario utilizados durante la atención.",
+                        related_name="citas_utilizadas",
+                        through="Core.CitaFarmaco",
+                        through_fields=("cita", "farmaco"),
+                        to="Core.farmaco",
+                    ),
+                ),
+            ],
         ),
     ]
